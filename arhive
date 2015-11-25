@@ -1,0 +1,311 @@
+#include "tdp_api.h"
+#include <stdlib.h>
+#include <pthread.h>
+#include <time.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+#define DESIRED_FREQUENCY 754000000	/* Tune frequency in Hz */
+#define BANDWIDTH 8    				/* Bandwidth in Mhz */
+#define VIDEO_PID 101				/* Channel video pid */
+#define AUDIO_PID 103				/* Channel audio pid */
+
+static pthread_cond_t statusCondition = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t statusMutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int32_t tunerStatusCallback(t_LockStatus status);
+static int32_t mySecFilterCallback(uint8_t *buffer);
+
+static int8_t flagPAT, flagPMT;
+
+int main()
+{    
+	struct timespec lockStatusWaitTime;
+	struct timeval now;
+	uint32_t playerHandle;
+	uint32_t sourceHandle;
+	uint32_t filterHandle;
+	uint32_t streamHandleVideo;
+	uint32_t streamHandleAudio;
+    
+    gettimeofday(&now,NULL);
+    lockStatusWaitTime.tv_sec = now.tv_sec+10;
+       
+    /*Initialize tuner device*/
+    if (Tuner_Init())
+    {
+        printf("\n%s : ERROR Tuner_Init() fail\n", __FUNCTION__);
+        return -1;
+    }
+    
+    /* Register tuner status callback */
+    if (Tuner_Register_Status_Callback(tunerStatusCallback))
+    {
+		printf("\n%s : ERROR Tuner_Register_Status_Callback() fail\n", __FUNCTION__);
+	}
+    
+    /*Lock to frequency*/
+    if (!Tuner_Lock_To_Frequency(DESIRED_FREQUENCY, BANDWIDTH, DVB_T))
+    {
+        printf("\n%s: INFO Tuner_Lock_To_Frequency(): %d Hz - success!\n",__FUNCTION__,DESIRED_FREQUENCY);
+    }
+    else
+    {
+        printf("\n%s: ERROR Tuner_Lock_To_Frequency(): %d Hz - fail!\n",__FUNCTION__,DESIRED_FREQUENCY);
+        Tuner_Deinit();
+        return -1;
+    }
+    
+    /* Wait for tuner to lock*/
+    pthread_mutex_lock(&statusMutex);
+    if (ETIMEDOUT == pthread_cond_timedwait(&statusCondition, &statusMutex, &lockStatusWaitTime))
+    {
+        printf("\n%s:ERROR Lock timeout exceeded!\n",__FUNCTION__);
+        Tuner_Deinit();
+        return -1;
+    }
+    pthread_mutex_unlock(&statusMutex);
+   
+    /**TO DO:**/
+    /*Initialize player, set PAT pid to demultiplexer and register section filter callback*/
+	if (NO_ERROR == Player_Init(&playerHandle))
+	{
+        printf("\n%s: INFO Player_Init() success!\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s: ERROR Player_Init() fail!\n",__FUNCTION__);
+        Tuner_Deinit();
+        return -1;
+    }
+
+	if (NO_ERROR == Player_Source_Open(playerHandle, &sourceHandle))
+	{
+        printf("\n%s: INFO Player_Source_Open() success!\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s: ERROR Player_Source_Open() fail!\n",__FUNCTION__);
+		Player_Deinit(playerHandle);
+        Tuner_Deinit();
+        return -1;
+    }
+
+	if (NO_ERROR == Demux_Set_Filter(playerHandle, 0x0000, 0x0000, &filterHandle))
+	{
+        printf("\n%s: INFO Demux_Set_Filter() success!\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s: ERROR Demux_Set_Filter() fail!\n",__FUNCTION__);
+		Player_Source_Close(playerHandle, sourceHandle);
+		Player_Deinit(playerHandle);
+        Tuner_Deinit();
+        return -1;
+    }
+
+	if (NO_ERROR == Demux_Register_Section_Filter_Callback(mySecFilterCallback))
+ 	{
+        printf("\n%s: INFO Demux_Register_Section_Filter_Callback() success!\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s: ERROR Demux_Register_Section_Filter_Callback() fail!\n",__FUNCTION__);
+		Demux_Free_Filter(playerHandle, filterHandle);
+		Player_Source_Close(playerHandle, sourceHandle);
+		Player_Deinit(playerHandle);
+        Tuner_Deinit();
+        return -1;
+    }
+    /**TO DO:**/
+    /*Play audio and video*/
+	if (NO_ERROR == Player_Stream_Create(playerHandle, sourceHandle, VIDEO_PID, 
+		VIDEO_TYPE_MPEG2, &streamHandleVideo))
+	{
+        printf("\n%s: INFO Player_Stream_Create() VIDEO success!\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s: ERROR Player_Stream_Create() VIDEO fail!\n",__FUNCTION__);
+		Demux_Free_Filter(playerHandle, filterHandle);
+		Player_Source_Close(playerHandle, sourceHandle);
+		Player_Deinit(playerHandle);
+        Tuner_Deinit();
+        return -1;
+    }
+
+	if (NO_ERROR == Player_Stream_Create(playerHandle, sourceHandle, AUDIO_PID, 
+		AUDIO_TYPE_MPEG_AUDIO, &streamHandleAudio))
+	{
+        printf("\n%s: INFO Player_Stream_Create() AUDIO success!\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s: ERROR Player_Stream_Create() AUDIO fail!\n",__FUNCTION__);
+		Demux_Free_Filter(playerHandle, filterHandle);
+		Player_Source_Close(playerHandle, sourceHandle);
+		Player_Deinit(playerHandle);
+        Tuner_Deinit();
+        return -1;
+    }
+
+	while (!flagPAT)
+	{
+		; // Sacekati da se isparsira PAT tablela. 
+	}	
+	
+	
+	Demux_Unregister_Section_Filter_Callback(mySecFilterCallback);
+	Demux_Free_Filter(playerHandle, filterHandle);
+
+	if (NO_ERROR == Demux_Set_Filter(playerHandle, 100, 2, &filterHandle))
+	{
+        printf("\n%s: INFO Demux_Set_Filter() success!\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s: ERROR Demux_Set_Filter() fail!\n",__FUNCTION__);
+		Player_Source_Close(playerHandle, sourceHandle);
+		Player_Deinit(playerHandle);
+        Tuner_Deinit();
+        return -1;
+    }
+
+	if (NO_ERROR == Demux_Register_Section_Filter_Callback(mySecFilterCallback))
+ 	{
+        printf("\n%s: INFO Demux_Register_Section_Filter_Callback() success!\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s: ERROR Demux_Register_Section_Filter_Callback() fail!\n",__FUNCTION__);
+		Demux_Free_Filter(playerHandle, filterHandle);
+		Player_Source_Close(playerHandle, sourceHandle);
+		Player_Deinit(playerHandle);
+        Tuner_Deinit();
+        return -1;
+    }
+
+	
+    
+	/* Wait for a while */
+    fflush(stdin);
+    getchar();
+    
+    /**TO DO:**/
+    /*Deinitialization*/
+	Player_Stream_Remove(playerHandle, sourceHandle, streamHandleVideo);
+	Player_Stream_Remove(playerHandle, sourceHandle, streamHandleAudio);
+	Demux_Unregister_Section_Filter_Callback(mySecFilterCallback);
+	Demux_Free_Filter(playerHandle, filterHandle);
+	Player_Source_Close(playerHandle, sourceHandle);
+	Player_Deinit(playerHandle);
+    
+    /*Deinitialize tuner device*/
+    Tuner_Deinit();
+  
+    return 0;
+}
+
+int32_t tunerStatusCallback(t_LockStatus status)
+{
+    if (status == STATUS_LOCKED)
+    {
+        pthread_mutex_lock(&statusMutex);
+        pthread_cond_signal(&statusCondition);
+        pthread_mutex_unlock(&statusMutex);
+        printf("\n%s -----TUNER LOCKED-----\n",__FUNCTION__);
+    }
+    else
+    {
+        printf("\n%s -----TUNER NOT LOCKED-----\n",__FUNCTION__);
+    }
+    return 0;
+}
+
+int32_t mySecFilterCallback(uint8_t *buffer)
+{
+	uint16_t sec_len;
+	uint16_t table;
+	uint16_t index;
+	int i;
+
+	/* Calculate the length of table and get table id. */
+	if (!flagPAT || !flagPMT) 
+	{
+		sec_len = *(buffer+1);
+		sec_len = sec_len << 8;
+		sec_len += *(buffer + 2);
+		sec_len = sec_len & 0x0FFF;
+		table = buffer[0];
+		printf("\n--------------------\n");
+		printf("Table: %hu\nLength: %hu", table, sec_len);
+		printf("\n--------------------\n");	
+	}
+		
+	if (!flagPAT && table == 0x0) 
+	{	
+		uint16_t program_number;
+		uint16_t PID;	
+
+		flagPAT = 0x1;
+		index = 9;
+		sec_len -= 9;
+		while (sec_len) 
+		{
+			sec_len -= 4;
+			program_number = buffer[index];
+			PID = buffer[index+2];
+			PID = PID & 0x1FFF;
+			printf("\nProgram: %hu, PID: %hu", program_number, PID); 	
+			index += 4;		
+		}
+	} 
+	else if (!flagPMT && table == 0x2) 
+	{
+		uint16_t info_length;
+		uint16_t PID;
+		uint8_t stream_type;
+		
+
+		flagPMT = 0x1;
+		index = 10;		
+		info_length = *(buffer + index);
+		info_length = info_length << 8;
+		info_length += *(buffer + index + 1);
+		info_length = info_length & 0x0FFF;
+
+		printf("\n--------------------\n");	
+		printf("Info length: %hu\n");
+		
+		index = index + 2 + info_length; 
+		sec_len -= 13;
+
+		printf("Index: %hu", index);
+		while (sec_len)
+		{
+			stream_type = buffer[index];
+			PID = buffer[index + 1];
+			PID = PID << 8;
+			PID += buffer[index + 2];
+			PID = PID & 0x1FFF;
+
+			info_length = buffer[index + 3];
+			info_length = info_length << 8;
+			info_length += buffer[index + 4];
+			info_length = info_length & 0x0FFF;
+
+			printf("\nStream type: %hu, PID: %hu, padding %hu",
+				stream_type, PID, info_length);
+			printf("\nSec length: %hu\n", sec_len, index);
+
+			index = index + 5 + info_length;
+			sec_len -= (5 + info_length);
+			fflush(stdout);
+		}	
+		printf("\n--------------------\n");	
+	}
+
+    return 0;
+}

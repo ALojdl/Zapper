@@ -4,6 +4,38 @@
 #include "tundem.h"
 #include "remote.h"
 
+int32_t callbackFunction(uint16_t keyPressed)
+{
+    switch (keyPressed)
+    {
+        case KEYCODE_P_MINUS: 
+            printf("CALL: channelDown()\n");
+            break;
+        case KEYCODE_P_PLUS: 
+            printf("CALL: channelUp()\n");
+            break;
+        case KEYCODE_V_PLUS: 
+            printf("CALL: volumeUp()\n");
+            break;
+        case KEYCODE_V_MINUS: 
+            printf("CALL: volumeDown()\n");
+            break;
+        case KEYCODE_MUTE: 
+            printf("CALL: muteVolume()\n");
+            break;
+        case KEYCODE_EXIT: 
+            printf("CALL: closeControler()\n");
+            break;
+        case KEYCODE_INFO: 
+            printf("CALL: getInfo()\n");
+            break;                                                
+        default:
+            printf("CALL: goToChannel()\n");
+    }
+    
+    return 0;
+}
+
 int main()
 {
     init_data_t data;
@@ -22,7 +54,7 @@ int main()
     */
     
     // Test remote. 
-    initRemote();
+    initRemote(callbackFunction);
     deinitRemote();
     
     /*

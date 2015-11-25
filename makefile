@@ -34,6 +34,8 @@ SRCS = ./main.c
 SRCS += ./parser.c
 SRCS += ./tundem.c
 SRCS += ./remote.c
+SRCS += ./controler.c
+SRCS += ./graphics.c
 
 projekat: 
 	$(CC) -o projekat $(INCS) $(SRCS) $(CFLAGS) $(LIBS)

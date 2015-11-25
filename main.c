@@ -10,6 +10,7 @@ int main()
     
     getConfiguration("./config.ini", &data);
     
+    /*
     // Print configuration. 
     printf("%d\n", data.freq);
     printf("%d\n", data.band);
@@ -18,10 +19,13 @@ int main()
     printf("%d\n", data.vPID); 
     printf("%s\n", data.aType);    
     printf("%s\n", data.vType); 
+    */
     
     // Test remote. 
+    initRemote();
+    deinitRemote();
     
-    
+    /*
     // Test player. 
     initTunerPlayer(data.freq, data.band, DVB_T);
     playStream(data.aPID, audio);
@@ -32,6 +36,7 @@ int main()
     closeStream(video);
     closeStream(audio);
     deinitTunerPlayer();
+    */
     
     return 0;
 }

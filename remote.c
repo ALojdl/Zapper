@@ -94,5 +94,15 @@ t_Error initRemote()
     }
     return NO_ERROR;
 }
-// Fali funkcija za gasenje. 
+
+t_Error deinitRemote()
+{
+	if(pthread_join(remote, NULL))
+    {
+        printf("ERROR: Error during pthread_join!\n");
+		return ERROR;
+    }
+            
+    return NO_ERROR;
+} 
 

@@ -10,7 +10,7 @@
 
 static pthread_t remote;
 static int32_t inputFileDesc;
-static keyCallback_t keyCallFunc;
+static key_callback_t keyCallFunc;
 
 int32_t getKeys(int32_t count, uint8_t* buf, int32_t* eventsRead)
 {    
@@ -58,7 +58,7 @@ void* remoteFunction()
         if(eventBuf.type == EV_KEY && (eventBuf.value == EV_VALUE_KEYPRESS || 
         eventBuf.value == EV_VALUE_AUTOREPEAT))
         {
-			printf("Event time: %d sec, %d usec\n",(int)eventBuf.time.tv_sec,
+			printf("\nEvent time: %d sec, %d usec\n",(int)eventBuf.time.tv_sec,
 			    (int)eventBuf.time.tv_usec);
 			printf("Event type: %hu\n",eventBuf.type);
 			printf("Event code: %hu\n",eventBuf.code);
@@ -73,7 +73,7 @@ void* remoteFunction()
 	return (void*)NO_ERROR;
 }
 
-t_Error initRemote(keyCallback_t keyFunc)
+t_Error initRemote(key_callback_t keyFunc)
 {
     if (pthread_create(&remote, NULL, remoteFunction, NULL))
     {

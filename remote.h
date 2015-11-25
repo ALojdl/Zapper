@@ -16,9 +16,9 @@
 #define EV_VALUE_KEYPRESS   1
 #define EV_VALUE_AUTOREPEAT 2
 
-typedef int32_t (*keyCallback_t)(uint16_t keyPressed);
+typedef int32_t (*key_callback_t)(uint16_t keyPressed);
 
-t_Error initRemote(keyCallback_t keyFunc);
+t_Error initRemote(key_callback_t keyFunc);
 t_Error deinitRemote();
 
 #endif // _REMOTE_H

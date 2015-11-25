@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include <pthread.h>
 #include <time.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "tundem.h"
 
-#define WAIT 10 // number of seconds waiting for frequency locking
+#define WAIT 10 // Number of seconds waiting for frequency locking.
 #define MHz 1000000 
 
 static pthread_cond_t statusCondition = PTHREAD_COND_INITIALIZER;
@@ -12,8 +12,11 @@ static pthread_mutex_t statusMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static uint32_t playerHandle;
 static uint32_t sourceHandle;
+static uint32_t filterHandle;
+
 static uint32_t vStreamHandle;
 static uint32_t aStreamHandle;
+
 
 int32_t freqLockCallback(t_LockStatus status)
 {
@@ -72,7 +75,7 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
     if (ETIMEDOUT == pthread_cond_timedwait
         (&statusCondition, &statusMutex, &lockStatusWaitTime))
     {
-        printf("ERROR: Error lock timeout exceeded!\n");
+        printf("ERROR: %s lock timeout exceeded!\n", __func__);
         Tuner_Deinit();
         return ERROR;
     }
@@ -81,7 +84,7 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
     // Initialize player.
     if (NO_ERROR == Player_Init(&playerHandle))
 	{
-        printf("INFO: Info Player_Init() success!\n");
+        printf("INFO: Player_Init() success!\n");
     }
     else
     {
@@ -107,18 +110,18 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
 }
 
 t_Error deinitTunerPlayer()
-{
-    // Deinit player
-    if (ERROR == Player_Deinit(playerHandle))
-    {
-        printf("ERROR: Error with Player_Deinit()!\n");
-        return ERROR;
-    }
-    
-    // Close source
+{    
+    // Close source.
     if (ERROR == Player_Source_Close(playerHandle, sourceHandle))
     {
         printf("ERROR: Error with Player_Source_Close()!\n");
+        return ERROR;
+    }
+    
+        // Deinit player.
+    if (ERROR == Player_Deinit(playerHandle))
+    {
+        printf("ERROR: Error with Player_Deinit()!\n");
         return ERROR;
     }
     
@@ -197,4 +200,38 @@ t_Error closeStream(stream_t type)
             printf("INFO: Player_Stream_Remove() AUDIO succes!\n");
         }
     }    
+}
+
+t_Error initFilter(uint32_t PID, uint32_t tableID, filter_callback_t callbackFunc)
+{	
+    if (ERROR == Demux_Set_Filter(playerHandle, PID, tableID, &filterHandle))
+    {
+        printf("ERROR: %s failed to set filter().\n", __func__);
+        return ERROR;
+    }
+    
+    if (ERROR == Demux_Register_Section_Filter_Callback(callbackFunc))
+    {
+        printf("ERROR: %s failed to register callback function.\n", __func__);
+        return ERROR;
+    }
+    
+    return NO_ERROR;
+}
+
+t_Error deinitFilter(filter_callback_t callbackFunc)
+{
+    if (ERROR == Demux_Unregister_Section_Filter_Callback(callbackFunc))
+    {
+        printf("ERROR: %s failed to unregister callback function.\n", __func__);
+        return ERROR;
+    }
+    
+    if (ERROR == Demux_Free_Filter(playerHandle, filterHandle))
+    {
+        printf("ERROR: %s failed to free filter.\n", __func__);
+        return ERROR;
+    }
+        
+    return NO_ERROR;
 }

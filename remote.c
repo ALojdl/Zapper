@@ -7,12 +7,13 @@
 
 
 #define NUM 1
+#define MAX_CHARACTERS 20
 
 static pthread_t remote;
 static int32_t inputFileDesc;
 static key_callback_t keyCallFunc;
 
-int32_t getKeys(int32_t count, uint8_t* buf, int32_t* eventsRead)
+int32_t getKeys(int32_t count, uint8_t *buf, int32_t *eventsRead)
 {    
     // Read next input event and put it in buffer. 
     int32_t ret;
@@ -23,6 +24,7 @@ int32_t getKeys(int32_t count, uint8_t* buf, int32_t* eventsRead)
         printf("Error code %d", ret);
         return ERROR;
     }
+    
     // Calculate number of read events. 
     *eventsRead = ret / (int)sizeof(struct input_event);
     
@@ -31,7 +33,7 @@ int32_t getKeys(int32_t count, uint8_t* buf, int32_t* eventsRead)
 
 void* remoteFunction()
 {
-    char deviceName[20];
+    char deviceName[MAX_CHARACTERS];
     struct input_event eventBuf;
     uint32_t eventCnt;
     int32_t counter = 0;
@@ -56,18 +58,20 @@ void* remoteFunction()
 		
 		// Filter input events. 
         if(eventBuf.type == EV_KEY && (eventBuf.value == EV_VALUE_KEYPRESS || 
-        eventBuf.value == EV_VALUE_AUTOREPEAT))
+            eventBuf.value == EV_VALUE_AUTOREPEAT))
         {
-			printf("\nEvent time: %d sec, %d usec\n",(int)eventBuf.time.tv_sec,
-			    (int)eventBuf.time.tv_usec);
-			printf("Event type: %hu\n",eventBuf.type);
-			printf("Event code: %hu\n",eventBuf.code);
-			printf("Event value: %d\n",eventBuf.value);
+			printf("\nEvent time: %d sec, %d usec\n",
+			    (int)eventBuf.time.tv_sec, (int)eventBuf.time.tv_usec);
+			printf("Event type: %hu\n", eventBuf.type);
+			printf("Event code: %hu\n", eventBuf.code);
+			printf("Event value: %d\n", eventBuf.value);
 			
 			// Pozivam main i gasim thread ako je exit.
 			keyCallFunc(eventBuf.code);
 			if (eventBuf.code == KEYCODE_EXIT)
+			{
 			    exit = 1;
+			}    
 		}
     }
 	return (void*)NO_ERROR;

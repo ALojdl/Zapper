@@ -108,7 +108,8 @@ void getInfo()
     {
         initFilter(patTable.patServiceInfoArray[currentChannel - 1].PID,
             0x02, pmtFilterCallback);
-        printf("    PID: %d\n", patTable.patServiceInfoArray[currentChannel - 1].PID);
+        printf("    PID: %d\n",
+            patTable.patServiceInfoArray[currentChannel - 1].PID);
         printf("     CH: %d\n", currentChannel);
     }
     else

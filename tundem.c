@@ -4,8 +4,8 @@
 #include <pthread.h>
 #include "tundem.h"
 
-#define WAIT 10 // Number of seconds waiting for frequency locking.
-#define MHz 1000000 
+#define WAIT 10     // Number of seconds waiting for frequency locking.
+#define MHz 1000000 // Multiplication constant for transform MHz -> Hz
 
 static pthread_cond_t statusCondition = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t statusMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -41,8 +41,6 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
     struct timespec lockStatusWaitTime;
 	struct timeval currentTime;
 	
-	uint32_t frequency = freq * MHz;
-	
 	gettimeofday(&currentTime,NULL);
     lockStatusWaitTime.tv_sec = currentTime.tv_sec + WAIT;
         
@@ -62,7 +60,7 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
 	}
 	
 	// Lock to frequency and check for error.
-	if (ERROR == Tuner_Lock_To_Frequency(frequency, band, module))
+	if (ERROR == Tuner_Lock_To_Frequency(freq * MHz, band, module))
 	{
 		printf("ERROR: Eror with Tuner_Lock_To_Frequency()!\n");
 		Tuner_Unregister_Status_Callback(freqLockCallback);
@@ -118,7 +116,7 @@ t_Error deinitTunerPlayer()
         return ERROR;
     }
     
-        // Deinit player.
+    // Deinit player.
     if (ERROR == Player_Deinit(playerHandle))
     {
         printf("ERROR: Error with Player_Deinit()!\n");

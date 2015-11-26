@@ -3,16 +3,17 @@
 
 #include "parser.h"
 
-#define TELETEXT_TAG 0x56
+#define TELETEXT_TAG    0x56
+#define MAX_CHARACTERS  20
 
 void getConfiguration(const char *path, init_data_t *data)
 {
-    FILE *config_file;
-    char tmp[20];
-    char * pch;
+    FILE *configFile;
+    char tmp[MAX_CHARACTERS];
+    char *pch;
     
-    config_file = fopen(path, "r");
-    if (config_file == NULL) 
+    configFile = fopen(path, "r");
+    if (configFile == NULL) 
     {
         printf("%s\t: ERROR -> Error opening file!", __func__);
         fflush(stdout);
@@ -20,57 +21,57 @@ void getConfiguration(const char *path, init_data_t *data)
     }
 
     //  [dvb-t]      
-    fscanf(config_file, "%s", tmp);
+    fscanf(configFile, "%s", tmp);
     
     //  frequency=470
-    fscanf(config_file, "%s", tmp);    
-    pch = strtok (tmp,"=");
-    pch = strtok (NULL, "=");
+    fscanf(configFile, "%s", tmp);    
+    pch = strtok(tmp,"=");
+    pch = strtok(NULL, "=");
     sscanf(pch, "%d", &data->freq);
     
     //  bandwith=8
-    fscanf(config_file, "%s", tmp);    
-    pch = strtok (tmp,"=");
-    pch = strtok (NULL, "=");
+    fscanf(configFile, "%s", tmp);    
+    pch = strtok(tmp, "=");
+    pch = strtok(NULL, "=");
     sscanf(pch, "%d", &data->band);
     
     //  module=DVB-T
-    fscanf(config_file, "%s", tmp);    
-    pch = strtok (tmp,"=");
-    pch = strtok (NULL, "=");
+    fscanf(configFile, "%s", tmp);    
+    pch = strtok(tmp,"=");
+    pch = strtok(NULL, "=");
     sscanf(pch, "%s", data->module);
     
     //  [initial_channel]
-    fscanf(config_file, "%s", tmp); 
+    fscanf(configFile, "%s", tmp); 
     
     //  aPID=101
-    fscanf(config_file, "%s", tmp);    
-    pch = strtok (tmp,"=");
-    pch = strtok (NULL, "=");
+    fscanf(configFile, "%s", tmp);    
+    pch = strtok(tmp,"=");
+    pch = strtok(NULL, "=");
     sscanf(pch, "%d", &data->aPID);   
     
     //  vPID=102
-    fscanf(config_file, "%s", tmp);    
-    pch = strtok (tmp,"=");
-    pch = strtok (NULL, "=");
+    fscanf(configFile, "%s", tmp);    
+    pch = strtok(tmp,"=");
+    pch = strtok(NULL, "=");
     sscanf(pch, "%d", &data->vPID);  
     
     //  aType=ac3
-    fscanf(config_file, "%s", tmp);    
-    pch = strtok (tmp,"=");
-    pch = strtok (NULL, "=");
+    fscanf(configFile, "%s", tmp);    
+    pch = strtok(tmp,"=");
+    pch = strtok(NULL, "=");
     sscanf(pch, "%s", data->aType);
     
     //  vType=mpeg2
-    fscanf(config_file, "%s", tmp);    
-    pch = strtok (tmp,"=");
-    pch = strtok (NULL, "=");
+    fscanf(configFile, "%s", tmp);    
+    pch = strtok(tmp,"=");
+    pch = strtok(NULL, "=");
     sscanf(pch, "%s", data->vType); 
     
-    fclose(config_file);
+    fclose(configFile);
 }    
 
-t_Error parsePatHeader(const uint8_t* patHeaderBuffer, pat_header_t* patHeader)
+t_Error parsePatHeader(const uint8_t *patHeaderBuffer, pat_header_t *patHeader)
 {    
     uint16_t tmp;
     
@@ -80,7 +81,7 @@ t_Error parsePatHeader(const uint8_t* patHeaderBuffer, pat_header_t* patHeader)
         return ERROR;
     }
 
-    patHeader->tableId = (uint8_t)* patHeaderBuffer; 
+    patHeader->tableId = patHeaderBuffer[0]; 
     if (patHeader->tableId != 0x00)
     {
         printf("ERROR: %s it is not a PAT Table.\n", __func__);
@@ -103,7 +104,8 @@ t_Error parsePatHeader(const uint8_t* patHeaderBuffer, pat_header_t* patHeader)
     return NO_ERROR;
 }
 
-t_Error parsePatServiceInfo(const uint8_t* patServiceInfoBuffer, pat_service_info_t* patServiceInfo)
+t_Error parsePatServiceInfo(const uint8_t *patServiceInfoBuffer,
+    pat_service_info_t *patServiceInfo)
 {
     uint16_t tmp;
     
@@ -130,9 +132,9 @@ t_Error parsePatServiceInfo(const uint8_t* patServiceInfoBuffer, pat_service_inf
     return NO_ERROR;
 }
 
-t_Error parsePatTable(const uint8_t* patSectionBuffer, pat_table_t* patTable)
+t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable)
 {
-    uint8_t * currentBufferPosition = NULL;
+    uint8_t *currentBufferPosition = NULL;
     uint32_t parsedLength = 0;
     
     if (patSectionBuffer == NULL || patTable == NULL)
@@ -141,30 +143,32 @@ t_Error parsePatTable(const uint8_t* patSectionBuffer, pat_table_t* patTable)
         return ERROR;
     }
     
-    if (parsePatHeader(patSectionBuffer,&(patTable->patHeader)) != NO_ERROR)
+    if (parsePatHeader(patSectionBuffer, &(patTable->patHeader)) != NO_ERROR)
     {
         printf("ERROR: %s parsing PAT header.\n", __func__);
         return ERROR;
     }
     
-    parsedLength = 12 /*PAT header size*/ - 3 /*Not in section length*/;
-    currentBufferPosition = (uint8_t *)(patSectionBuffer + 8); /* Position after last_section_number */
-    patTable->serviceInfoCount = 0; /* Number of services info presented in PAT table */
+    parsedLength = 9; 
+    currentBufferPosition = patSectionBuffer[8]; 
+    patTable->serviceInfoCount = 0; 
     
     while (parsedLength < patTable->patHeader.sectionLength)
     {
-        if (patTable->serviceInfoCount > MAX_NUMBER_OF_PIDS_IN_PAT - 1)
+        if (patTable->serviceInfoCount > (MAX_NUMBER_OF_PIDS_IN_PAT - 1))
         {
-            printf("ERROR: %s there is not enough space for Service info\n", __func__);
+            printf("ERROR: %s there is not enough space for Service info\n",
+                __func__);
             return ERROR;
         }
         
         if (parsePatServiceInfo(currentBufferPosition, 
-            &(patTable->patServiceInfoArray[patTable->serviceInfoCount])) == NO_ERROR)
+            &(patTable->patServiceInfoArray[patTable->serviceInfoCount])) 
+                == NO_ERROR)
         {
-            currentBufferPosition += 4; /* Size from program_number to pid */
-            parsedLength += 4; /* Size from program_number to pid */
-            
+            currentBufferPosition += 4; 
+            parsedLength += 4; 
+                        
             // Check if this is real channel, it is not a zero.
             if ( (patTable->patServiceInfoArray[patTable->serviceInfoCount])
                 .programNumber )
@@ -177,7 +181,7 @@ t_Error parsePatTable(const uint8_t* patSectionBuffer, pat_table_t* patTable)
     return NO_ERROR;
 }
 
-t_Error printPatTable(pat_table_t* patTable)
+t_Error printPatTable(pat_table_t *patTable)
 {
     uint8_t i = 0;
     
@@ -188,21 +192,22 @@ t_Error printPatTable(pat_table_t* patTable)
     }
     
     printf("\n------------ PAT TABLE SECTION ------------------\n");
-    printf("table_id         |  %d\n",patTable->patHeader.tableId);
-    printf("section_length   |  %d\n",patTable->patHeader.sectionLength);
-    printf("table_version    |  %d\n",patTable->patHeader.versionNumber);
+    printf("table_id         |  %d\n", patTable->patHeader.tableId);
+    printf("section_length   |  %d\n", patTable->patHeader.sectionLength);
+    printf("table_version    |  %d\n", patTable->patHeader.versionNumber);
     
-    for (i=0; i<patTable->serviceInfoCount; i++)
+    for (i = 0; i < patTable->serviceInfoCount; i++)
     {
         printf("-----------------------------------------\n");
-        printf("program_number   |  %d\n",patTable->patServiceInfoArray[i].programNumber);
-        printf("pid              |  %d\n",patTable->patServiceInfoArray[i].PID); 
+        printf("program_number   |  %d\n",
+            patTable->patServiceInfoArray[i].programNumber);
+        printf("pid              |  %d\n", 
+            patTable->patServiceInfoArray[i].PID); 
     }
     printf("\n============= PAT TABLE SECTION =================\n");
     
     return NO_ERROR;
 }
-
 
 uint8_t findTeletext(const uint8_t* infoSectionBuffer, uint16_t infoSectionLength)
 {
@@ -229,7 +234,7 @@ uint8_t findTeletext(const uint8_t* infoSectionBuffer, uint16_t infoSectionLengt
     return 0x0;
 }
 
-t_Error parsePmtHeader(const uint8_t* pmtHeaderBuffer, pmt_header_t* pmtHeader)
+t_Error parsePmtHeader(const uint8_t *pmtHeaderBuffer, pmt_header_t *pmtHeader)
 {    
     uint16_t tmp;
     
@@ -239,8 +244,8 @@ t_Error parsePmtHeader(const uint8_t* pmtHeaderBuffer, pmt_header_t* pmtHeader)
         return ERROR;
     }
 
-    pmtHeader->tableId = (uint8_t)* pmtHeaderBuffer; 
-    pmtHeader->programNumber = (uint16_t)* (pmtHeaderBuffer + 3);
+    pmtHeader->tableId = pmtHeaderBuffer[0]; 
+    pmtHeader->programNumber = pmtHeaderBuffer[3];
     
     // Get PMT section length from buffer.
     tmp = pmtHeaderBuffer[1];
@@ -258,7 +263,8 @@ t_Error parsePmtHeader(const uint8_t* pmtHeaderBuffer, pmt_header_t* pmtHeader)
     return NO_ERROR;
 }
 
-t_Error parsePmtServiceInfo(const uint8_t* pmtServiceInfoBuffer, pmt_stream_t* pmtStreamInfo)
+t_Error parsePmtServiceInfo(const uint8_t *pmtServiceInfoBuffer,
+    pmt_stream_t *pmtStreamInfo)
 {
     uint16_t tmp;
     
@@ -281,11 +287,11 @@ t_Error parsePmtServiceInfo(const uint8_t* pmtServiceInfoBuffer, pmt_stream_t* p
     return NO_ERROR;
 }
 
-t_Error parsePmtTable(const uint8_t* pmtBuffer, pmt_table_t* pmtTable)
+t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable)
 {
-    uint8_t * currentBufferPosition = NULL;
-    uint16_t sec_len;
-    uint16_t info_length;
+    uint8_t *currentBufferPosition = NULL;
+    uint16_t sectionLength;
+    uint16_t infoLength;
     uint16_t index;
     
     if (pmtBuffer == NULL || pmtTable == NULL)
@@ -300,46 +306,49 @@ t_Error parsePmtTable(const uint8_t* pmtBuffer, pmt_table_t* pmtTable)
         return ERROR;
     }
     
-    sec_len = pmtTable->pmtHeader.sectionLength;
+    sectionLength = pmtTable->pmtHeader.sectionLength;
     index = 10;		
     
-	info_length = pmtBuffer[index];
-	info_length = info_length << 8;
-	info_length = info_length + pmtBuffer[index + 1];
-	info_length = info_length & 0x0FFF;
+    // Get length of ES info section.
+	infoLength = pmtBuffer[index];
+	infoLength = infoLength << 8;
+	infoLength = infoLength + pmtBuffer[index + 1];
+	infoLength = infoLength & 0x0FFF;
 	
-	index = index + 2 + info_length; 
-	sec_len -= 13;
+	index = index + 2 + infoLength; 
+	sectionLength -= 13;
 	pmtTable->serviceInfoCount = 0;
 	
-	while (sec_len)
+	while (sectionLength)
 	{
-	    currentBufferPosition = (uint8_t *)(pmtBuffer + index);
-	    if (pmtTable->serviceInfoCount > MAX_NUMBER_OF_STREAMS_IN_PMT - 1)
+	    currentBufferPosition = pmtBuffer[index];
+	    if (pmtTable->serviceInfoCount > (MAX_NUMBER_OF_STREAMS_IN_PMT - 1))
         {
-            printf("ERROR: %s there is not enough space for Stream info\n", __func__);
+            printf("ERROR: %s there is not enough space for Stream info\n",
+                __func__);
             return ERROR;
         }
         
         if (parsePmtServiceInfo(currentBufferPosition, 
-            &(pmtTable->pmtServiceInfoArray[pmtTable->serviceInfoCount])) == NO_ERROR)
+                &(pmtTable->pmtServiceInfoArray[pmtTable->serviceInfoCount]))
+                == NO_ERROR)
         {
             // Get info length.
-            info_length = pmtBuffer[index + 3];
-			info_length = info_length << 8;
-			info_length += pmtBuffer[index + 4];
-			info_length = info_length & 0x0FFF;
+            infoLength = pmtBuffer[index + 3];
+			infoLength = infoLength << 8;
+			infoLength += pmtBuffer[index + 4];
+			infoLength = infoLength & 0x0FFF;
 			
 			// Check if there is a teletext.
 			if (!pmtTable->teletextExist)
 			{
 			    pmtTable->teletextExist = findTeletext
-			        ((currentBufferPosition + 5), info_length);
+			        ((currentBufferPosition + 5), infoLength);
 			}
 			
 			// Move pointer to new location based on info length.
-            index = index + 5 + info_length;
-			sec_len -= (5 + info_length);
+            index = index + 5 + infoLength;
+			sectionLength -= (5 + infoLength);
             pmtTable->serviceInfoCount ++;
         }    
 	}	
@@ -347,7 +356,7 @@ t_Error parsePmtTable(const uint8_t* pmtBuffer, pmt_table_t* pmtTable)
     return NO_ERROR;
 }
 
-t_Error printPmtTable(pmt_table_t* pmtTable)
+t_Error printPmtTable(pmt_table_t *pmtTable)
 {
     uint8_t i = 0;
     
@@ -367,8 +376,10 @@ t_Error printPmtTable(pmt_table_t* pmtTable)
     for (i=0; i<pmtTable->serviceInfoCount; i++)
     {
         printf("-----------------------------------------\n");
-        printf("stream_type      |  %d\n",pmtTable->pmtServiceInfoArray[i].streamType);
-        printf("pid              |  %d\n",pmtTable->pmtServiceInfoArray[i].PID); 
+        printf("stream_type      |  %d\n",
+            pmtTable->pmtServiceInfoArray[i].streamType);
+        printf("pid              |  %d\n",
+            pmtTable->pmtServiceInfoArray[i].PID); 
     }
     printf("\n============= PMT TABLE SECTION =================\n");
     

@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include "tdp_api.h"
 
-#define TABLES_MAX_NUMBER_OF_PIDS_IN_PAT 20
+#define MAX_NUMBER_OF_PIDS_IN_PAT 30
+#define MAX_NUMBER_OF_STREAMS_IN_PMT 30
 
+// Config file structure. 
 typedef struct _init_data_t
 {
     uint32_t freq;
@@ -17,33 +19,53 @@ typedef struct _init_data_t
     char vType[8];
 } init_data_t;
 
+// PAT table structures.
 typedef struct _pat_header_t
 {
     uint8_t tableId;
-    uint8_t sectionSyntaxIndicator;
-    uint16_t sectionLength;
-    uint16_t transportStreamId;
     uint8_t versionNumber;
-    uint8_t currentNextIndicator;
-    uint8_t sectionNumber;
-    uint8_t lastSectionNumber; 
+    uint16_t sectionLength;
 } pat_header_t;
 
 typedef struct _pat_service_info_t
 {    
     uint16_t    programNumber;
-    uint16_t    pid;
+    uint16_t    PID;
 } pat_service_info_t;
 
 typedef struct _pat_table_t
 {    
     pat_header_t patHeader;
-    pat_service_info_t patServiceInfoArray[TABLES_MAX_NUMBER_OF_PIDS_IN_PAT];
+    pat_service_info_t patServiceInfoArray[MAX_NUMBER_OF_PIDS_IN_PAT];
     uint8_t serviceInfoCount;
 } pat_table_t;
+
+// PMT table structures.
+typedef struct _pmt_header_t
+{
+   uint8_t tableId;
+   uint8_t versionNumber;
+   uint16_t sectionLength;
+   uint16_t programNumber;
+} pmt_header_t;
+
+typedef struct _pmt_stream_t 
+{
+    uint16_t PID;
+    uint8_t streamType;
+} pmt_stream_t;
+
+typedef struct _pmt_table_t 
+{
+    pmt_header_t pmtHeader;
+    pmt_stream_t pmtServiceInfoArray[MAX_NUMBER_OF_STREAMS_IN_PMT];
+    uint8_t serviceInfoCount;
+} pmt_table_t;
 
 void getConfiguration(const char *path, init_data_t *data);
 t_Error parsePatTable(const uint8_t* patSectionBuffer, pat_table_t* patTable);
 t_Error printPatTable(pat_table_t* patTable);
+t_Error parsePmtTable(const uint8_t* pmtBuffer, pmt_table_t* pmtTable);
+t_Error printPmtTable(pmt_table_t* pmtTable);
 
 #endif // _PARSER_H

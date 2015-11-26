@@ -9,6 +9,7 @@ t_Error playStream(uint32_t PID, stream_t type);
 t_Error closeStream();
 
 static pat_table_t patTable;
+static pmt_table_t pmtTable;
 static int32_t filterCallback (uint8_t *buffer);
 
 void initHardware()
@@ -68,18 +69,18 @@ void muteVolume()
 void getInfo()
 {
     printf("--------------------\n        INFO\n--------------------\n");
-    initFilter(0x0, 0x0, filterCallback);
+    initFilter(100, 2, filterCallback);
 }
 
 int32_t filterCallback (uint8_t *buffer)
 {
-    if (ERROR == parsePatTable(buffer, &patTable))
+    if (ERROR == parsePmtTable(buffer, &pmtTable))
     {
         printf("ERROR: %s crashed while parsing table!");
     }
     else
     {        
-        printPatTable(&patTable);
+        printPmtTable(&pmtTable);
         deinitFilter(filterCallback);
     }
     

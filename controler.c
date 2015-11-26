@@ -69,7 +69,7 @@ void muteVolume()
 void getInfo()
 {
     printf("--------------------\n        INFO\n--------------------\n");
-    initFilter(100, 2, filterCallback);
+    initFilter(1000, 2, filterCallback);
 }
 
 int32_t filterCallback (uint8_t *buffer)

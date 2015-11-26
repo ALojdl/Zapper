@@ -60,6 +60,7 @@ typedef struct _pmt_table_t
     pmt_header_t pmtHeader;
     pmt_stream_t pmtServiceInfoArray[MAX_NUMBER_OF_STREAMS_IN_PMT];
     uint8_t serviceInfoCount;
+    uint8_t teletextExist;
 } pmt_table_t;
 
 void getConfiguration(const char *path, init_data_t *data);

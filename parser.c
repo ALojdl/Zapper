@@ -3,6 +3,8 @@
 
 #include "parser.h"
 
+#define TELETEXT_TAG 0x56
+
 void getConfiguration(const char *path, init_data_t *data)
 {
     FILE *config_file;
@@ -195,6 +197,32 @@ t_Error printPatTable(pat_table_t* patTable)
     return NO_ERROR;
 }
 
+
+uint8_t findTeletext(const uint8_t* infoSectionBuffer, uint16_t infoSectionLength)
+{
+    uint8_t descriptionTag;
+    uint8_t descriptionLength;
+    uint16_t parsedLength = 0;
+    
+    while (parsedLength < infoSectionLength)
+    {
+        descriptionTag = infoSectionBuffer[parsedLength];
+        descriptionLength = infoSectionBuffer[parsedLength + 1];
+        
+        if (descriptionTag == TELETEXT_TAG)
+        {
+            return 0x1;
+        }
+        else
+        {
+            parsedLength = parsedLength + descriptionLength + 2;
+            printf("DEBUG: parsLength %hu\n", parsedLength);
+        }
+    }
+    
+    return 0x0;
+}
+
 t_Error parsePmtHeader(const uint8_t* pmtHeaderBuffer, pmt_header_t* pmtHeader)
 {    
     uint16_t tmp;
@@ -280,9 +308,6 @@ t_Error parsePmtTable(const uint8_t* pmtBuffer, pmt_table_t* pmtTable)
 	
 	while (sec_len)
 	{
-	    printf("Info count: %d\n", pmtTable->serviceInfoCount); 
-	    fflush(stdout);
-	    
 	    currentBufferPosition = (uint8_t *)(pmtBuffer + index);
 	    if (pmtTable->serviceInfoCount > MAX_NUMBER_OF_STREAMS_IN_PMT - 1)
         {
@@ -298,6 +323,13 @@ t_Error parsePmtTable(const uint8_t* pmtBuffer, pmt_table_t* pmtTable)
 			info_length = info_length << 8;
 			info_length += pmtBuffer[index + 4];
 			info_length = info_length & 0x0FFF;
+			
+			// Check if there is a teletext.
+			if (!pmtTable->teletextExist)
+			{
+			    pmtTable->teletextExist = findTeletext
+			        ((currentBufferPosition + 5), info_length);
+			}
 			
 			// Move pointer to new location based on info length.
             index = index + 5 + info_length;
@@ -324,6 +356,7 @@ t_Error printPmtTable(pmt_table_t* pmtTable)
     printf("section_length   |  %d\n", pmtTable->pmtHeader.sectionLength);
     printf("program_number   |  %d\n", pmtTable->pmtHeader.programNumber);
     printf("table_version    |  %d\n", pmtTable->pmtHeader.versionNumber);
+    printf("teletext_exist   |  %d\n", pmtTable->teletextExist);
     
     for (i=0; i<pmtTable->serviceInfoCount; i++)
     {

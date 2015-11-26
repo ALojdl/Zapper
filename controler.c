@@ -74,7 +74,16 @@ void channelUp()
 
 void goToChannel(uint16_t channel)
 {
-    printf("Go to channel: %hu\n", channel);
+    if (channel >= minChannel && channel <= maxChannel)
+    {
+        currentChannel = channel;
+        getInfo();
+    }
+    else
+    {
+        printf("INFO: Channel %hu don't exist", channel);
+        fflush(stdout);
+    }
 }
 
 void volumeUp()

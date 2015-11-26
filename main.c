@@ -28,7 +28,7 @@ int32_t callbackFunction(uint16_t keyPressed)
             getInfo();
             break;                                                
         default:
-            goToChannel((keyPressed - 1) % 10);
+            goToChannel(keyPressed - 1);
     }
     
     return 0;

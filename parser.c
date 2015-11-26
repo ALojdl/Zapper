@@ -3,8 +3,11 @@
 
 #include "parser.h"
 
-#define TELETEXT_TAG    0x56
 #define MAX_CHARACTERS  20
+#define PAT_INFO_SIZE   4
+#define TELETEXT_TAG    0x56
+#define PAT_TABLE_ID    0x00
+
 
 void getConfiguration(const char *path, init_data_t *data)
 {
@@ -82,7 +85,7 @@ t_Error parsePatHeader(const uint8_t *patHeaderBuffer, pat_header_t *patHeader)
     }
 
     patHeader->tableId = patHeaderBuffer[0]; 
-    if (patHeader->tableId != 0x00)
+    if (patHeader->tableId != PAT_TABLE_ID)
     {
         printf("ERROR: %s it is not a PAT Table.\n", __func__);
         return ERROR;
@@ -166,8 +169,8 @@ t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable)
             &(patTable->patServiceInfoArray[patTable->serviceInfoCount])) 
                 == NO_ERROR)
         {
-            currentBufferPosition += 4; 
-            parsedLength += 4; 
+            currentBufferPosition += PAT_INFO_SIZE; 
+            parsedLength += PAT_INFO_SIZE; 
                         
             // Check if this is real channel, it is not a zero.
             if ( (patTable->patServiceInfoArray[patTable->serviceInfoCount])
@@ -222,7 +225,7 @@ uint8_t findTeletext(const uint8_t* infoSectionBuffer, uint16_t infoSectionLengt
         
         if (descriptionTag == TELETEXT_TAG)
         {
-            return 0x1;
+            return 1;
         }
         else
         {
@@ -231,7 +234,7 @@ uint8_t findTeletext(const uint8_t* infoSectionBuffer, uint16_t infoSectionLengt
         }
     }
     
-    return 0x0;
+    return 0;
 }
 
 t_Error parsePmtHeader(const uint8_t *pmtHeaderBuffer, pmt_header_t *pmtHeader)

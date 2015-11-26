@@ -3,6 +3,10 @@
 #include "tundem.h"
 #include "parser.h"
 
+#define PAT_TABLE_ID    0x00
+#define PAT_PID_NUM     0x00 
+#define PMT_TABLE_ID    0x02
+
 t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module);
 t_Error deinitTunerPlayer();
 t_Error playStream(uint32_t PID, stream_t type);
@@ -31,9 +35,9 @@ void initHardware()
     playStream(data.vPID, video);    
     
     // Get data about channels on current frequency.
-    currentChannel = 0;
+    currentChannel = 0; 
     minChannel = 1;
-    initFilter(0x00, 0x00, patFilterCallback);
+    initFilter(PAT_PID_NUM, PAT_TABLE_ID, patFilterCallback);
 }
 
 void deinitHardware()
@@ -107,7 +111,7 @@ void getInfo()
     if (currentChannel)
     {
         initFilter(patTable.patServiceInfoArray[currentChannel - 1].PID,
-            0x02, pmtFilterCallback);
+            PMT_TABLE_ID, pmtFilterCallback);
         printf("    PID: %d\n",
             patTable.patServiceInfoArray[currentChannel - 1].PID);
         printf("     CH: %d\n", currentChannel);

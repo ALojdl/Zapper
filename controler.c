@@ -10,7 +10,13 @@ t_Error closeStream();
 
 static pat_table_t patTable;
 static pmt_table_t pmtTable;
-static int32_t filterCallback (uint8_t *buffer);
+static int32_t pmtFilterCallback (uint8_t *buffer);
+static int32_t patFilterCallback (uint8_t *buffer);
+static int32_t totFilterCallback (uint8_t *buffer);
+
+static uint8_t currentChannel;
+static uint8_t minChannel;
+static uint8_t maxChannel;
 
 void initHardware()
 {
@@ -25,7 +31,9 @@ void initHardware()
     playStream(data.vPID, video);    
     
     // Get data about channels on current frequency.
-    
+    currentChannel = 0;
+    minChannel = 1;
+    initFilter(0x00, 0x00, patFilterCallback);
 }
 
 void deinitHardware()
@@ -38,12 +46,30 @@ void deinitHardware()
 
 void channelDown()
 {
-    printf("CH-\n");
+    if (currentChannel > minChannel)
+    {
+        currentChannel --;
+        getInfo();
+    }
+    else
+    {
+        currentChannel = maxChannel;
+        getInfo();
+    }
 }
 
 void channelUp()
 {
-    printf("CH+\n");
+     if (currentChannel < maxChannel)
+    {
+        currentChannel ++;
+        getInfo();
+    }
+    else
+    {
+        currentChannel = minChannel;
+        getInfo();
+    }
 }
 
 void goToChannel(uint16_t channel)
@@ -69,10 +95,36 @@ void muteVolume()
 void getInfo()
 {
     printf("--------------------\n        INFO\n--------------------\n");
-    initFilter(1000, 2, filterCallback);
+    if (currentChannel)
+    {
+        initFilter(patTable.patServiceInfoArray[currentChannel - 1].PID,
+            0x02, pmtFilterCallback);
+        printf("    PID: %d\n", patTable.patServiceInfoArray[currentChannel - 1].PID);
+        printf("     CH: %d\n", currentChannel);
+    }
+    else
+    {
+        printf("--------------------\n        NO INFO\n--------------------\n");
+    }
 }
 
-int32_t filterCallback (uint8_t *buffer)
+int32_t patFilterCallback (uint8_t *buffer)
+{
+    if (ERROR == parsePatTable(buffer, &patTable))
+    {
+        printf("ERROR: %s crashed while parsing table!");
+    }
+    else
+    {        
+        printPatTable(&patTable);
+        deinitFilter(patFilterCallback);
+        maxChannel = patTable.serviceInfoCount;
+    }
+    
+    return 0;
+}
+
+int32_t pmtFilterCallback (uint8_t *buffer)
 {
     if (ERROR == parsePmtTable(buffer, &pmtTable))
     {
@@ -81,8 +133,13 @@ int32_t filterCallback (uint8_t *buffer)
     else
     {        
         printPmtTable(&pmtTable);
-        deinitFilter(filterCallback);
+        deinitFilter(pmtFilterCallback);
     }
     
+    return 0;
+}
+
+int32_t totFilterCallback (uint8_t *buffer)
+{
     return 0;
 }

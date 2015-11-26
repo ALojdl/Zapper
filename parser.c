@@ -164,7 +164,13 @@ t_Error parsePatTable(const uint8_t* patSectionBuffer, pat_table_t* patTable)
         {
             currentBufferPosition += 4; /* Size from program_number to pid */
             parsedLength += 4; /* Size from program_number to pid */
-            patTable->serviceInfoCount ++;
+            
+            // Check if this is real channel, it is not a zero.
+            if ( (patTable->patServiceInfoArray[patTable->serviceInfoCount])
+                .programNumber )
+            {
+                patTable->serviceInfoCount ++;
+            }
         }    
     }
     

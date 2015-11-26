@@ -63,6 +63,12 @@ typedef struct _pmt_table_t
     uint8_t teletextExist;
 } pmt_table_t;
 
+typedef struct _tot_table_t
+{
+    uint8_t tableId;
+    uint16_t sectionLength;
+} tot_table_t;
+
 void getConfiguration(const char *path, init_data_t *data);
 t_Error parsePatTable(const uint8_t* patSectionBuffer, pat_table_t* patTable);
 t_Error printPatTable(pat_table_t* patTable);

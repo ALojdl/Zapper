@@ -7,13 +7,14 @@
 #define PAT_PID_NUM     0x00 
 #define PMT_TABLE_ID    0x02
 
-t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module);
-t_Error deinitTunerPlayer();
+// playStream and closeStream are used in initHardware and deinitHardware.
 t_Error playStream(uint32_t PID, stream_t type);
 t_Error closeStream();
 
+static char *path;
 static pat_table_t patTable;
 static pmt_table_t pmtTable;
+
 static int32_t pmtFilterCallback (uint8_t *buffer);
 static int32_t patFilterCallback (uint8_t *buffer);
 static int32_t totFilterCallback (uint8_t *buffer);
@@ -22,6 +23,12 @@ static uint8_t currentChannel;
 static uint8_t minChannel;
 static uint8_t maxChannel;
 
+void savePath(char *pathToConfigFile)
+{
+    path = pathToConfigFile;
+    return;
+}
+
 void initHardware()
 {
     init_data_t data;
@@ -29,7 +36,7 @@ void initHardware()
     printf("\n====================\n  INICIJALIZACIJA\n====================\n");
     
     // Run stream defined in config file. 
-    getConfiguration("./config.ini", &data);
+    getConfiguration(path, &data);
     initTunerPlayer(data.freq, data.band, DVB_T);
     playStream(data.aPID, audio);
     playStream(data.vPID, video);    

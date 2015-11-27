@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+void savePath(char *pathToConfigFile);
 void initHardware();
 void deinitHardware();
 void channelDown();

@@ -34,8 +34,18 @@ int32_t callbackFunction(uint16_t keyPressed)
     return 0;
 }
 
-int main()
+int main(int argc, char *argv[])
 {    
+    // Check if number of arguments is correct.
+    if (argc == 2)
+    {
+        savePath(argv[1]);
+    }
+    else
+    {
+        printf("ERROR: Wrong number of arguments when calling this app.\n");
+    }
+    
     // Initialize. 
     initHardware();    
     initRemote(callbackFunction);

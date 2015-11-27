@@ -153,7 +153,7 @@ t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable)
     }
     
     parsedLength = 9; 
-    currentBufferPosition = patSectionBuffer[8]; 
+    currentBufferPosition = (uint8_t *)&patSectionBuffer[8]; 
     patTable->serviceInfoCount = 0; 
     
     while (parsedLength < patTable->patHeader.sectionLength)
@@ -324,7 +324,7 @@ t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable)
 	
 	while (sectionLength)
 	{
-	    currentBufferPosition = pmtBuffer[index];
+	    currentBufferPosition = (uint8_t *)&pmtBuffer[index];
 	    if (pmtTable->serviceInfoCount > (MAX_NUMBER_OF_STREAMS_IN_PMT - 1))
         {
             printf("ERROR: %s there is not enough space for Stream info\n",

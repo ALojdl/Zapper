@@ -2,6 +2,7 @@
 #include "controler.h"
 #include "tundem.h"
 #include "parser.h"
+#include "graphics.h"
 
 #define PAT_TABLE_ID            0x00
 #define PAT_PID_NUM             0x00 
@@ -60,6 +61,11 @@ void initHardware()
     {
         printf("ERROR: Failed to set initial volume.\n");
     }
+    
+    // Init graphics.
+    initGraphic();
+    drawVolume();
+    drawInfoBar();
 }
 
 void deinitHardware()
@@ -68,6 +74,7 @@ void deinitHardware()
     closeStream(video);
     closeStream(audio);
     deinitTunerPlayer();
+    deinitGraphic();
 }
 
 void channelDown()
@@ -184,6 +191,10 @@ void muteVolume()
             printf("ERROR: Failed to mute.\n");
         }
     }
+    
+    // Added here just for testing.
+    removeVolume();
+    removeInfoBar();
     
     printf("INFO: M->Current volume %hu.\n", currentVolume);
 }

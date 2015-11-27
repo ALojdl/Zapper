@@ -20,5 +20,7 @@ t_Error closeStream();
 t_Error initFilter(uint32_t PID, uint32_t tableID, 
     filter_callback_t callbackFunc);
 t_Error deinitFilter(filter_callback_t callbackFunc);
+t_Error volumeGet(uint32_t *volume);
+t_Error volumeSet(uint32_t volume);
 
 #endif // _TUNDEM_H

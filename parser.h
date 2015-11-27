@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include "tdp_api.h"
 
-#define MAX_NUMBER_OF_PIDS_IN_PAT 30
-#define MAX_NUMBER_OF_STREAMS_IN_PMT 30
+#define MAX_NUMBER_OF_PIDS_IN_PAT       30
+#define MAX_NUMBER_OF_STREAMS_IN_PMT    30     
 
 // Config file structure. 
 typedef struct _init_data_t
@@ -13,10 +13,10 @@ typedef struct _init_data_t
     uint32_t freq;
     uint32_t band;
     char module[8];
-    uint16_t aPID;
-    uint16_t vPID;
-    char aType[8];
-    char vType[8];
+    uint16_t audioPID;
+    uint16_t videoPID;
+    char audioType[8];
+    char videoType[8];
 } init_data_t;
 
 // PAT table structures.

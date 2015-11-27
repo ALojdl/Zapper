@@ -51,25 +51,25 @@ void getConfiguration(const char *path, init_data_t *data)
     fscanf(configFile, "%s", tmp);    
     pch = strtok(tmp,"=");
     pch = strtok(NULL, "=");
-    sscanf(pch, "%d", &data->aPID);   
+    sscanf(pch, "%d", &data->audioPID);   
     
     //  vPID=102
     fscanf(configFile, "%s", tmp);    
     pch = strtok(tmp,"=");
     pch = strtok(NULL, "=");
-    sscanf(pch, "%d", &data->vPID);  
+    sscanf(pch, "%d", &data->videoPID);  
     
     //  aType=ac3
     fscanf(configFile, "%s", tmp);    
     pch = strtok(tmp,"=");
     pch = strtok(NULL, "=");
-    sscanf(pch, "%s", data->aType);
+    sscanf(pch, "%s", data->audioType);
     
     //  vType=mpeg2
     fscanf(configFile, "%s", tmp);    
     pch = strtok(tmp,"=");
     pch = strtok(NULL, "=");
-    sscanf(pch, "%s", data->vType); 
+    sscanf(pch, "%s", data->videoType); 
     
     fclose(configFile);
 }    

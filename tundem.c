@@ -233,3 +233,25 @@ t_Error deinitFilter(filter_callback_t callbackFunc)
         
     return NO_ERROR;
 }
+
+t_Error volumeGet(uint32_t *volume)
+{   
+	if (ERROR == Player_Volume_Get(playerHandle, volume))
+	{
+	    printf("ERROR: Player_Volume_Get() breaked.\n");
+	    return ERROR;
+	}
+	
+	return NO_ERROR;
+}
+
+t_Error volumeSet(uint32_t volume)
+{
+	if (ERROR == Player_Volume_Set(playerHandle, volume))
+	{
+	    printf("ERROR: Player_Volume_Set() breaked.\n");
+	    return ERROR;
+	}
+	
+	return NO_ERROR;
+}

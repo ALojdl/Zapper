@@ -1,4 +1,6 @@
 #include <directfb.h>
+#include <signal.h>
+#include <time.h>
 #include "graphics.h"
 
 #define VOLUME_X_COOR   50
@@ -9,6 +11,8 @@
 #define TEXT_RED        255
 #define TEXT_GREEN      255
 #define TEXT_BLUE       255
+#define VOLUME_TIME     3
+#define INFO_TIME       3
 
 
 /* helper macro for error checking */
@@ -29,8 +33,23 @@ static int screenWidth = 0;
 static int screenHeight = 0;
 static DFBSurfaceDescription surfaceDesc;
 
+static timer_t volumeTimerId;
+static timer_t infoTimerId;
+
+static struct itimerspec volumeTimerSpec;
+static struct itimerspec volumeTimerSpecOld;
+ 
+static struct itimerspec infoTimerSpec;
+static struct itimerspec infoTimerSpecOld;
+
+
 void initGraphic()
 {
+    struct sigevent volumeSignalEvent;
+    struct sigevent infoSignalEvent;
+    int32_t ret;
+    
+    
     /* initialize DirectFB */    
 	DFBCHECK(DirectFBInit(NULL, NULL));	
     /* fetch the DirectFB interface */
@@ -60,19 +79,81 @@ void initGraphic()
                                     /*upper left y coordinate*/ 0,
                                     /*rectangle width*/ screenWidth,
                                     /*rectangle height*/ screenHeight));
+                                    
+    // -------------------------------------------------------------------------
+    // PREPARE TIMERS
+    // -------------------------------------------------------------------------
+    
+    // ----------------------------- VOLUME ------------------------------------
+    // Set timer.
+	memset(&volumeTimerSpec, 0, sizeof(volumeTimerSpec));
+	
+	volumeTimerSpec.it_value.tv_sec = VOLUME_TIME;
+	volumeTimerSpec.it_value.tv_nsec = 0;
+	
+	 /* create timer */
+    volumeSignalEvent.sigev_notify = SIGEV_THREAD; /* tell the OS to notify you about timer by calling the specified function */
+    volumeSignalEvent.sigev_notify_function = removeVolume; /* function to be called when timer runs out */
+    volumeSignalEvent.sigev_value.sival_ptr = NULL; /* thread arguments */
+    volumeSignalEvent.sigev_notify_attributes = NULL; /* thread attributes (e.g. thread stack size) - if NULL default attributes are applied */
+    ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
+                       /*timer settings*/&volumeSignalEvent,
+                       /*where to store the ID of the newly created timer*/&volumeTimerId);
+    if(ret == -1){
+        printf("ERROR: Error creating timer, abort!\n");
+        primary->Release(primary);
+        dfbInterface->Release(dfbInterface);
+        
+        return; // Add error notification.
+    }
+    
+    // -----------------------------  INFO  ------------------------------------
+    
+    // Set timer.
+	memset(&infoTimerSpec, 0, sizeof(infoTimerSpec));
+	
+	infoTimerSpec.it_value.tv_sec = VOLUME_TIME;
+	infoTimerSpec.it_value.tv_nsec = 0;
+	
+	 /* create timer */
+    infoSignalEvent.sigev_notify = SIGEV_THREAD; /* tell the OS to notify you about timer by calling the specified function */
+    infoSignalEvent.sigev_notify_function = removeInfoBar; /* function to be called when timer runs out */
+    infoSignalEvent.sigev_value.sival_ptr = NULL; /* thread arguments */
+    infoSignalEvent.sigev_notify_attributes = NULL; /* thread attributes (e.g. thread stack size) - if NULL default attributes are applied */
+    ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
+                       /*timer settings*/&infoSignalEvent,
+                       /*where to store the ID of the newly created timer*/&infoTimerId);
+    if(ret == -1){
+        printf("ERROR: Error creating timer, abort!\n");
+        primary->Release(primary);
+        dfbInterface->Release(dfbInterface);
+        
+        return; // Add error notification.
+    }
                                 
     return;
 }
 
-void drawVolume()
+int32_t drawVolume(uint8_t volume)
 {
     /* draw image from file */    
 	IDirectFBImageProvider *provider;
 	IDirectFBSurface *logoSurface = NULL;
-	int32_t logoHeight, logoWidth;
+	int32_t logoHeight, logoWidth, ret;	
+	char imageName[15];
+
+	int32_t timerFlags = 0;
+	
+	// Prepare timer 
+	
+	// Write name of image depending on current volume.
+	sprintf(imageName, "volume_%hu.png", volume);
+	
+    /* switch between the displayed and the work buffer (update the display) */
+	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
     /* create the image provider for the specified file */
-	DFBCHECK(dfbInterface->CreateImageProvider(dfbInterface, "volume_0.png", &provider));
+	DFBCHECK(dfbInterface->CreateImageProvider(dfbInterface, imageName, &provider));
     /* get surface descriptor for the surface where the image will be rendered */
 	DFBCHECK(provider->GetSurfaceDescription(provider, &surfaceDesc));
     /* create the surface for the image */
@@ -91,12 +172,28 @@ void drawVolume()
     
     /* switch between the displayed and the work buffer (update the display) */
 	DFBCHECK(primary->Flip(primary, NULL, 0));
+	
+	// -------------------------------------------------------------------------
+	// SPECIFY TIMER
+    
+    /* specify the timer timeout time */
+    volumeTimerSpec.it_value.tv_sec = 3;
+    volumeTimerSpec.it_value.tv_nsec = 0;
+    
+    /* set the new timer specs */
+    ret = timer_settime(volumeTimerId,0,&volumeTimerSpec,&volumeTimerSpecOld);
+    if(ret == -1){
+        printf("Error setting timer in %s!\n", __FUNCTION__);
+    }
+	
+	return 0;
 }
 
 void drawInfoBar()
 {
     IDirectFBFont *fontInterface = NULL;
 	DFBFontDescription fontDesc;
+	int32_t ret;
 	
     /* switch between the displayed and the work buffer (update the display) */
 	DFBCHECK(primary->Flip(primary, NULL, 0));
@@ -129,13 +226,59 @@ void drawInfoBar()
     
     /* switch between the displayed and the work buffer (update the display) */
 	DFBCHECK(primary->Flip(primary, NULL, 0));
+	
+	// -------------------------------------------------------------------------
+	// SPECIFY TIMER
+    
+    /* specify the timer timeout time */
+    infoTimerSpec.it_value.tv_sec = 3;
+    infoTimerSpec.it_value.tv_nsec = 0;
+    
+    /* set the new timer specs */
+    ret = timer_settime(infoTimerId,0,&infoTimerSpec,&infoTimerSpecOld);
+    if(ret == -1){
+        printf("Error setting timer in %s!\n", __FUNCTION__);
+    }
+	
+	return;
 }
 
 void removeInfoBar()
 {
     IDirectFBFont *fontInterface = NULL;
 	DFBFontDescription fontDesc;
+	int32_t ret;
 	
+    /* switch between the displayed and the work buffer (update the display) */
+	DFBCHECK(primary->Flip(primary, NULL, 0));
+	
+	// TO DO -------------------------------------------------------------------
+	/* rectangle drawing */    
+    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED,
+        INFO_BAR_GREEN, INFO_BAR_BLUE, 0x00));
+    DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
+        4*screenWidth/6, screenHeight/6));
+	// -------------------------------------------------------------------------
+	
+	
+	/* switch between the displayed and the work buffer (update the display) */
+	DFBCHECK(primary->Flip(primary, NULL, 0));
+	
+	/* stop the timer */
+    memset(&infoTimerSpec,0,sizeof(infoTimerSpec));
+    ret = timer_settime(infoTimerId,0,&infoTimerSpec,&infoTimerSpecOld);
+    if(ret == -1){
+        printf("Error setting timer in %s!\n", __FUNCTION__);
+    }
+	
+	
+    return;
+}
+
+void removeVolume(union sigval signalArg)
+{	
+    int32_t ret;
+    
     /* switch between the displayed and the work buffer (update the display) */
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
@@ -150,33 +293,19 @@ void removeInfoBar()
 	/* switch between the displayed and the work buffer (update the display) */
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
-    return;
-}
-
-void removeVolume()
-{
-    IDirectFBFont *fontInterface = NULL;
-	DFBFontDescription fontDesc;
-	
-    /* switch between the displayed and the work buffer (update the display) */
-	DFBCHECK(primary->Flip(primary, NULL, 0));
-	
-	// TO DO -------------------------------------------------------------------
-	/* rectangle drawing */    
-    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED,
-        INFO_BAR_GREEN, INFO_BAR_BLUE, 0x00));
-    DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
-        4*screenWidth/6, screenHeight/6));
-	// -------------------------------------------------------------------------
-	
-	/* switch between the displayed and the work buffer (update the display) */
-	DFBCHECK(primary->Flip(primary, NULL, 0));
+	/* stop the timer */
+    memset(&volumeTimerSpec,0,sizeof(volumeTimerSpec));
+    ret = timer_settime(volumeTimerId,0,&volumeTimerSpec,&volumeTimerSpecOld);
+    if(ret == -1){
+        printf("Error setting timer in %s!\n", __FUNCTION__);
+    }
 	
     return;
 }
 
 void deinitGraphic()
 {
+    timer_delete(volumeTimerId);
     primary->Release(primary);
 	dfbInterface->Release(dfbInterface);
     return;

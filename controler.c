@@ -64,8 +64,6 @@ void initHardware()
     
     // Init graphics.
     initGraphic();
-    drawVolume();
-    drawInfoBar();
 }
 
 void deinitHardware()
@@ -142,6 +140,10 @@ void volumeUp()
     {
         printf("ERROR: Failed to add volume.\n");
     }
+    else
+    {
+        drawVolume(currentVolume);    
+    }    
     
     printf("INFO: Current volume %hu.\n", currentVolume);
 }
@@ -164,13 +166,17 @@ void volumeDown()
     {
         printf("ERROR: Failed to sub volume.\n");
     }
+    else
+    {
+        drawVolume(currentVolume);    
+    }    
     
     printf("INFO: Current volume %hu.\n", currentVolume);
 }
 
 void muteVolume()
 {
-    // Check if muted
+    // Check if muted.
     if (volumeMuted)
     {
         volumeMuted = 0;
@@ -180,6 +186,10 @@ void muteVolume()
         {
             printf("ERROR: Failed to unmute.\n");
         }
+        else
+        {
+            drawVolume(currentVolume);    
+        }    
     }
     else
     {
@@ -190,11 +200,11 @@ void muteVolume()
         {
             printf("ERROR: Failed to mute.\n");
         }
+        else
+        {
+            drawVolume(currentVolume * VOLUME_MIN);    
+        }    
     }
-    
-    // Added here just for testing.
-    removeVolume();
-    removeInfoBar();
     
     printf("INFO: M->Current volume %hu.\n", currentVolume);
 }
@@ -302,6 +312,9 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
         }
         
         deinitFilter(pmtFilterCallback);
+        
+        // Show info bar.
+        drawInfoBar();
     }
     
     return 0;

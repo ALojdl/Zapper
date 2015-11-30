@@ -29,8 +29,8 @@ if (err != DFB_OK)                                          \
 
 static IDirectFBSurface *primary = NULL;
 static IDirectFB *dfbInterface = NULL;
-static int screenWidth = 0;
-static int screenHeight = 0;
+static int screenWidth;
+static int screenHeight;
 static DFBSurfaceDescription surfaceDesc;
 
 static timer_t volumeTimerId;
@@ -38,210 +38,127 @@ static timer_t infoTimerId;
 
 static struct itimerspec volumeTimerSpec;
 static struct itimerspec volumeTimerSpecOld;
- 
 static struct itimerspec infoTimerSpec;
 static struct itimerspec infoTimerSpecOld;
 
 
-void initGraphic()
+t_Error initGraphic()
 {
     struct sigevent volumeSignalEvent;
-    struct sigevent infoSignalEvent;
-    int32_t ret;
+    struct sigevent infoSignalEvent;    
     
-    
-    /* initialize DirectFB */    
+    // Initialize DirectFB.     
 	DFBCHECK(DirectFBInit(NULL, NULL));	
-    /* fetch the DirectFB interface */
-	DFBCHECK(DirectFBCreate(&dfbInterface));
-    /* tell the DirectFB to take the full screen for this application */
+    DFBCHECK(DirectFBCreate(&dfbInterface));
 	DFBCHECK(dfbInterface->SetCooperativeLevel(dfbInterface, DFSCL_FULLSCREEN));
     
-    /* create primary surface with double buffering enabled */    
+    // Create primary surface, with enabled double buffering.     
 	surfaceDesc.flags = DSDESC_CAPS;
 	surfaceDesc.caps = DSCAPS_PRIMARY | DSCAPS_FLIPPING;
-	DFBCHECK (dfbInterface->CreateSurface(dfbInterface, &surfaceDesc, &primary));
+	DFBCHECK (dfbInterface->CreateSurface(dfbInterface,
+	    &surfaceDesc, &primary));    
     
-    
-    /* fetch the screen size */
-    DFBCHECK (primary->GetSize(primary, &screenWidth, &screenHeight));
-    
-    
-    /* clear the screen before drawing anything (draw black full screen rectangle)*/    
-    DFBCHECK(primary->SetColor(/*surface to draw on*/ primary,
-                               /*red*/ 0x00,
-                               /*green*/ 0x00,
-                               /*blue*/ 0x00,
-                               /*alpha*/ 0x00));
-                               
-	DFBCHECK(primary->FillRectangle(/*surface to draw on*/ primary,
-                                    /*upper left x coordinate*/ 0,
-                                    /*upper left y coordinate*/ 0,
-                                    /*rectangle width*/ screenWidth,
-                                    /*rectangle height*/ screenHeight));
+    // Fetch the screen size and clear screen.
+    DFBCHECK (primary->GetSize(primary, &screenWidth, &screenHeight));   
+    DFBCHECK(primary->SetColor(primary, 0x00, 0x00, 0x00, 0x00));                               
+	DFBCHECK(primary->FillRectangle(primary, 0, 0, screenWidth, screenHeight));
                                     
-    // -------------------------------------------------------------------------
-    // PREPARE TIMERS
-    // -------------------------------------------------------------------------
-    
-    // ----------------------------- VOLUME ------------------------------------
-    // Set timer.
-	memset(&volumeTimerSpec, 0, sizeof(volumeTimerSpec));
-	
+    // Prepare volume timer specification.
+	memset(&volumeTimerSpec, 0, sizeof(volumeTimerSpec));	
 	volumeTimerSpec.it_value.tv_sec = VOLUME_TIME;
 	volumeTimerSpec.it_value.tv_nsec = 0;
 	
-	 /* create timer */
-    volumeSignalEvent.sigev_notify = SIGEV_THREAD; /* tell the OS to notify you about timer by calling the specified function */
-    volumeSignalEvent.sigev_notify_function = removeVolume; /* function to be called when timer runs out */
-    volumeSignalEvent.sigev_value.sival_ptr = NULL; /* thread arguments */
-    volumeSignalEvent.sigev_notify_attributes = NULL; /* thread attributes (e.g. thread stack size) - if NULL default attributes are applied */
-    ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
-                       /*timer settings*/&volumeSignalEvent,
-                       /*where to store the ID of the newly created timer*/&volumeTimerId);
-    if(ret == -1){
-        printf("ERROR: Error creating timer, abort!\n");
+	// Prepare volume signal event specification.
+    volumeSignalEvent.sigev_notify = SIGEV_THREAD; 
+    volumeSignalEvent.sigev_notify_function = removeVolume; 
+    volumeSignalEvent.sigev_value.sival_ptr = NULL; 
+    volumeSignalEvent.sigev_notify_attributes = NULL; 
+    
+    // Create volume timer and check if there was error while creating. 
+    if (-1 == timer_create(CLOCK_REALTIME, &volumeSignalEvent, &volumeTimerId))
+    {
+        printf("ERROR: %s failed to create volume timer.\n", __func__);
         primary->Release(primary);
-        dfbInterface->Release(dfbInterface);
-        
-        return; // Add error notification.
+        dfbInterface->Release(dfbInterface);        
+        return ERROR;
     }
     
-    // -----------------------------  INFO  ------------------------------------
-    
-    // Set timer.
-	memset(&infoTimerSpec, 0, sizeof(infoTimerSpec));
-	
+    // Prepare info timer specification. 
+	memset(&infoTimerSpec, 0, sizeof(infoTimerSpec));	
 	infoTimerSpec.it_value.tv_sec = VOLUME_TIME;
 	infoTimerSpec.it_value.tv_nsec = 0;
 	
-	 /* create timer */
-    infoSignalEvent.sigev_notify = SIGEV_THREAD; /* tell the OS to notify you about timer by calling the specified function */
-    infoSignalEvent.sigev_notify_function = removeInfoBar; /* function to be called when timer runs out */
-    infoSignalEvent.sigev_value.sival_ptr = NULL; /* thread arguments */
-    infoSignalEvent.sigev_notify_attributes = NULL; /* thread attributes (e.g. thread stack size) - if NULL default attributes are applied */
-    ret = timer_create(/*clock for time measuring*/CLOCK_REALTIME,
-                       /*timer settings*/&infoSignalEvent,
-                       /*where to store the ID of the newly created timer*/&infoTimerId);
-    if(ret == -1){
-        printf("ERROR: Error creating timer, abort!\n");
+	// Prepare info signal event specification.
+    infoSignalEvent.sigev_notify = SIGEV_THREAD;
+    infoSignalEvent.sigev_notify_function = removeInfoBar;
+    infoSignalEvent.sigev_value.sival_ptr = NULL; 
+    infoSignalEvent.sigev_notify_attributes = NULL;
+    
+    // Create info timer and check if there was error while creating. 
+    if(-1 == timer_create(CLOCK_REALTIME, &infoSignalEvent, &infoTimerId))
+    {
+        printf("ERROR: %s failed to create info timer.\n", __func__);
         primary->Release(primary);
         dfbInterface->Release(dfbInterface);
-        
-        return; // Add error notification.
+        return ERROR;
     }
                                 
-    return;
+    return NO_ERROR;
 }
 
-int32_t drawVolume(uint8_t volume)
-{
-    /* draw image from file */    
+t_Error drawVolume(uint8_t volume)
+{  
 	IDirectFBImageProvider *provider;
-	IDirectFBSurface *logoSurface = NULL;
-	int32_t logoHeight, logoWidth, ret;	
+	IDirectFBSurface *logoSurface;
 	char imageName[15];
-
-	int32_t timerFlags = 0;
+	int32_t logoHeight;
+	int32_t logoWidth;
+	int32_t timerFlags = 0;	
 	
-	// Prepare timer 
-	
-	// Write name of image depending on current volume.
-	sprintf(imageName, "volume_%hu.png", volume);
-	
-    /* switch between the displayed and the work buffer (update the display) */
+    // Switch buffers. 
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
-    /* create the image provider for the specified file */
+    // Read image, prepare surface descriptor and render image to given surface.
 	DFBCHECK(dfbInterface->CreateImageProvider(dfbInterface, imageName, &provider));
-    /* get surface descriptor for the surface where the image will be rendered */
 	DFBCHECK(provider->GetSurfaceDescription(provider, &surfaceDesc));
-    /* create the surface for the image */
 	DFBCHECK(dfbInterface->CreateSurface(dfbInterface, &surfaceDesc, &logoSurface));
-    /* render the image to the surface */
 	DFBCHECK(provider->RenderTo(provider, logoSurface, NULL));
-	
-    /* cleanup the provider after rendering the image to the surface */
 	provider->Release(provider);
 	
-    /* fetch the logo size and add (blit) it to the screen */
+    // Fetch the logo size and add it to the screen. 
 	DFBCHECK(logoSurface->GetSize(logoSurface, &logoWidth, &logoHeight));
-	DFBCHECK(primary->Blit
-	    (primary, logoSurface, NULL, VOLUME_X_COOR, VOLUME_Y_COOR));
+	DFBCHECK(primary->Blit(primary, logoSurface,
+	    NULL, VOLUME_X_COOR, VOLUME_Y_COOR));    
     
-    
-    /* switch between the displayed and the work buffer (update the display) */
+    // Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
-	
-	// -------------------------------------------------------------------------
-	// SPECIFY TIMER
     
-    /* specify the timer timeout time */
+    // Specify the timer timeout time and set it, saving the old specifications. 
     volumeTimerSpec.it_value.tv_sec = VOLUME_TIME;
     volumeTimerSpec.it_value.tv_nsec = 0;
     
-    /* set the new timer specs */
-    ret = timer_settime(volumeTimerId,0,&volumeTimerSpec,&volumeTimerSpecOld);
-    if(ret == -1){
-        printf("Error setting timer in %s!\n", __FUNCTION__);
+    if (-1 == timer_settime(volumeTimerId, 0, 
+        &volumeTimerSpec, &volumeTimerSpecOld))
+    {
+        printf("ERROR: %s failed while setting timer.\n", __func__);
+        return ERROR;
     }
 	
-	return 0;
+	return NO_ERROR;
 }
 
-void drawInfoBar(uint8_t program, uint8_t teletext)
+t_Error drawInfoBar(uint8_t program, uint8_t teletext)
 {
-    IDirectFBFont *fontInterface = NULL;
+    IDirectFBFont *fontInterface;
 	DFBFontDescription fontDesc;
-	int32_t ret;
-	char prog[11];      // "Program XX"
-	char datum[32];     // "Naziv dana u nedelji mm/dd/yyyy"
-	char telxt[20];     // "Telekst ne postoji"
+	char prog[11];
+	char date[32];
+	char telxt[20];
 	
-    /* switch between the displayed and the work buffer (update the display) */
-	DFBCHECK(primary->Flip(primary, NULL, 0));
-	
-    /* rectangle drawing */    
-    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED,
-        INFO_BAR_GREEN, INFO_BAR_BLUE, 0xff));
-    DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
-        4*screenWidth/6, screenHeight/6));
-    
-    // -------------------------------------------------------------------------    
-    // ----------------------- TEXT --------------------------------------------
-    DFBCHECK(primary->SetColor(primary, TEXT_RED,
-        TEXT_GREEN, TEXT_BLUE, 0xff));
-	
-	/* specify the height of the font by raising the appropriate flag and setting the height value */
-	fontDesc.flags = DFDESC_HEIGHT;
-	fontDesc.height = 40;
-	
-    /* create the font and set the created font for primary surface text drawing */
-	DFBCHECK(dfbInterface->CreateFont(dfbInterface, "/home/galois/fonts/DejaVuSans.ttf", &fontDesc, &fontInterface));
-	DFBCHECK(primary->SetFont(primary, fontInterface));
-    
-    // WRITE PROGRAM NUMBER
-    sprintf(prog, "Program %hu", program);
-    
-	DFBCHECK(primary->DrawString(primary,
-                                 /*text to be drawn*/ prog,
-                                 /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
-                                 /*x coordinate of the lower left corner of the resulting text*/ screenWidth/5,
-                                 /*y coordinate of the lower left corner of the resulting text*/ 17*screenHeight/20,
-                                 /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
-                                 
-    // WRITE DATE
-    sprintf(datum, "Naziv dana u nedelji mm/dd/yyyy");
-    
-	DFBCHECK(primary->DrawString(primary,
-                                 /*text to be drawn*/ datum,
-                                 /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
-                                 /*x coordinate of the lower left corner of the resulting text*/ screenWidth/5,
-                                 /*y coordinate of the lower left corner of the resulting text*/ 19*screenHeight/20,
-                                 /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
-                                 
-    // WRITE TELETEXT
-    if (teletext)
+	// Prepare strings for info bar.
+	sprintf(prog, "Program %hu", program);
+	sprintf(date, "Naziv dana u nedelji mm/dd/yyyy");
+	if (teletext)
     {
         sprintf(telxt, "Teletekst postoji");    
     }
@@ -249,91 +166,98 @@ void drawInfoBar(uint8_t program, uint8_t teletext)
     {
         sprintf(telxt, "Teletekst ne postoji");    
     }
-    
-	DFBCHECK(primary->DrawString(primary,
-                                 /*text to be drawn*/ telxt,
-                                 /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
-                                 /*x coordinate of the lower left corner of the resulting text*/ 5*screenWidth/9,
-                                 /*y coordinate of the lower left corner of the resulting text*/ 17*screenHeight/20,
-                                 /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
-    
-    /* switch between the displayed and the work buffer (update the display) */
+	
+    // Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
-	// -------------------------------------------------------------------------
-	// SPECIFY TIMER
+    // Draw a rectangle representing info bar.    
+    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED, 
+        INFO_BAR_GREEN, INFO_BAR_BLUE, 0xff));
+    DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
+        4*screenWidth/6, screenHeight/6));
     
-    /* specify the timer timeout time */
+    // Prepare text font, color and size. Then create font and draw it.
+    DFBCHECK(primary->SetColor(primary, TEXT_RED, TEXT_GREEN, TEXT_BLUE, 0xff));
+	fontDesc.flags = DFDESC_HEIGHT;
+	fontDesc.height = 40;
+	DFBCHECK(dfbInterface->CreateFont(dfbInterface, 
+	    "/home/galois/fonts/DejaVuSans.ttf", &fontDesc, &fontInterface));
+	DFBCHECK(primary->SetFont(primary, fontInterface));    
+
+    // Write program number, date and teletext to info bar.
+    	DFBCHECK(primary->DrawString(primary, prog, -1, screenWidth/5, 
+	    17*screenHeight/20, DSTF_LEFT));
+	DFBCHECK(primary->DrawString(primary, date, -1, screenWidth/5, 
+	    19*screenHeight/20, DSTF_LEFT));  
+	DFBCHECK(primary->DrawString(primary, telxt, -1, 5*screenWidth/9, 
+	    17*screenHeight/20, DSTF_LEFT));
+    
+    // Switch buffers.
+	DFBCHECK(primary->Flip(primary, NULL, 0));
+    
+    // Specify the timer timeout time and set new timer.
     infoTimerSpec.it_value.tv_sec = INFO_TIME;
-    infoTimerSpec.it_value.tv_nsec = 0;
+    infoTimerSpec.it_value.tv_nsec = 0;    
     
-    /* set the new timer specs */
-    ret = timer_settime(infoTimerId,0,&infoTimerSpec,&infoTimerSpecOld);
-    if(ret == -1){
-        printf("Error setting timer in %s!\n", __FUNCTION__);
+    if (-1 == timer_settime(infoTimerId, 0, &infoTimerSpec, &infoTimerSpecOld))
+    {
+        printf("ERROR: %s failed while creating timer.\n", __func__);
+        return ERROR;
     }
 	
-	return;
+	return NO_ERROR;
 }
 
-void removeInfoBar()
-{
-    IDirectFBFont *fontInterface = NULL;
-	DFBFontDescription fontDesc;
-	int32_t ret;
-	
-    /* switch between the displayed and the work buffer (update the display) */
+t_Error removeInfoBar()
+{	
+    // Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
-	// TO DO -------------------------------------------------------------------
-	/* rectangle drawing */    
-    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED,
+	// Draw transparent rectangle in place of info bar.  
+    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED, 
         INFO_BAR_GREEN, INFO_BAR_BLUE, 0x00));
     DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
         4*screenWidth/6, screenHeight/6));
-	// -------------------------------------------------------------------------
 	
-	
-	/* switch between the displayed and the work buffer (update the display) */
+	// Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
-	/* stop the timer */
-    memset(&infoTimerSpec,0,sizeof(infoTimerSpec));
-    ret = timer_settime(infoTimerId,0,&infoTimerSpec,&infoTimerSpecOld);
-    if(ret == -1){
-        printf("Error setting timer in %s!\n", __FUNCTION__);
+	// Stop timer.
+    memset(&infoTimerSpec, 0, sizeof(infoTimerSpec));
+    if (-1 == timer_settime(infoTimerId, 0, &infoTimerSpec, &infoTimerSpecOld))
+    {
+        printf("ERROR: %s failed while stoping timer.\n", __func__);
+        return ERROR:
     }
 	
-	
-    return;
+    return NO_ERROR;
 }
 
-void removeVolume(union sigval signalArg)
-{	
-    int32_t ret;
-    
-    /* switch between the displayed and the work buffer (update the display) */
+t_Error removeVolume(union sigval signalArg)
+{	    
+    // Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
-	// TO DO -------------------------------------------------------------------
-	/* rectangle drawing */    
+	// Draw transparent rectangle in place of volume bar.  
     DFBCHECK(primary->SetColor(primary, INFO_BAR_RED,
         INFO_BAR_GREEN, INFO_BAR_BLUE, 0x00));
     DFBCHECK(primary->FillRectangle(primary, VOLUME_X_COOR, VOLUME_Y_COOR,
         200, 200));
-	// -------------------------------------------------------------------------
 	
-	/* switch between the displayed and the work buffer (update the display) */
+	// Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
-	/* stop the timer */
-    memset(&volumeTimerSpec,0,sizeof(volumeTimerSpec));
-    ret = timer_settime(volumeTimerId,0,&volumeTimerSpec,&volumeTimerSpecOld);
-    if(ret == -1){
-        printf("Error setting timer in %s!\n", __FUNCTION__);
+	// Stop timer.
+    memset(&volumeTimerSpec, 0, sizeof(volumeTimerSpec));
+    
+    if (-1 == timer_settime(volumeTimerId, 0, &volumeTimerSpec, 
+        &volumeTimerSpecOld))
+    {
+        printf("ERROR: %s failed while stoping timer.\n", __func__);
+        return ERROR:
     }
 	
-    return;
+    return NO_ERROR;
 }
 
 void deinitGraphic()

@@ -18,9 +18,6 @@
 #define VOLUME_INIT_VAL         5
 #define VOLUME_CONST            200000000
 
-// playStream and closeStream are used in initHardware and deinitHardware.
-t_Error playStream(uint32_t PID, stream_t type);
-t_Error closeStream();
 
 static char *path;
 static uint16_t pmtVersionOnDisplay;
@@ -46,7 +43,7 @@ void initHardware()
 {    
     printf("\n====================\n  INICIJALIZACIJA\n====================\n");
     
-    // Run stream defined in config file. 
+    // Play stream defined in config file. 
     getConfiguration(path, &data);
     initTunerPlayer(data.freq, data.band, DVB_T);
     playStream(data.audioPID, audio);
@@ -63,7 +60,7 @@ void initHardware()
     volumeMuted = 0;
     if (ERROR == volumeSet(currentVolume * VOLUME_CONST))
     {
-        printf("ERROR: Failed to set initial volume.\n");
+        printf("ERROR: %s failed to set initial volume.\n", __func__);
     }
     
     // Init graphics.
@@ -73,8 +70,16 @@ void initHardware()
 void deinitHardware()
 {
     printf("\n====================\n DEINICIJALIZACIJA\n====================\n");
-    closeStream(video);
+    
+    // Close streams.
+    if (videoStreaming)
+    {
+        closeStream(video);
+        videoStreaming = 0;
+    }
     closeStream(audio);
+    
+    // Deinit tuner, player and graphics.
     deinitTunerPlayer();
     deinitGraphic();
 }
@@ -91,7 +96,7 @@ void channelDown()
         currentChannel = maxChannel;
     }
     
-    // Request new PMT table.
+    // Request new PMT table, indirectly changing the channel.
     changeChannel();
 }
 
@@ -107,7 +112,7 @@ void channelUp()
         currentChannel = minChannel;
     }
     
-    // Request new PMT table.
+    // Request new PMT table, indirectly changing the channel.
     changeChannel();
 }
 
@@ -119,6 +124,7 @@ void goToChannel(uint16_t channel)
         currentChannel = channel;
         changeChannel();
     }
+    // If there's no channel, just inform user.
     else
     {
         printf("INFO: Channel %hu don't exist", channel);
@@ -148,8 +154,6 @@ void volumeUp()
     {
         drawVolume(currentVolume);    
     }    
-    
-    printf("INFO: Current volume %hu.\n", currentVolume);
 }
 
 void volumeDown()
@@ -174,8 +178,6 @@ void volumeDown()
     {
         drawVolume(currentVolume);    
     }    
-    
-    printf("INFO: Current volume %hu.\n", currentVolume);
 }
 
 void muteVolume()
@@ -209,8 +211,6 @@ void muteVolume()
             drawVolume(currentVolume * VOLUME_MIN);    
         }    
     }
-    
-    printf("INFO: M->Current volume %hu.\n", currentVolume);
 }
 
 void getInfo()
@@ -219,7 +219,7 @@ void getInfo()
     if (currentChannel)
     {
        drawInfoBar(currentChannel, pmtTable.teletextExist);
-       // Debug
+       // DEBUG: Make a callback function in graphic to update the date.
        initFilter(TOT_PID_NUM, TOT_TABLE_ID, totFilterCallback);
     }
     else
@@ -231,11 +231,11 @@ void getInfo()
 void savePath(char *pathToConfigFile)
 {
     path = pathToConfigFile;
-    return;
 }
 
 static void changeChannel()
 {
+    // Check if there is PMT table for current channel.
     if (currentChannel)
     {
         initFilter(patTable.patServiceInfoArray[currentChannel - 1].PID,
@@ -255,6 +255,7 @@ static void getFirstVideoAndAudio()
     data.audioPID = 0;
     data.videoPID = 0;
     
+    // Going trough services whole service list.
     for (i = 0; i < pmtTable.serviceInfoCount; i ++)
     {
         if (pmtTable.pmtServiceInfoArray[i].streamType == VIDEO_TYPE_OF_STREAM)
@@ -279,42 +280,42 @@ static void getFirstVideoAndAudio()
 
 static int32_t patFilterCallback (uint8_t *buffer)
 {
+    // Check if there was error while parsing.
     if (ERROR == parsePatTable(buffer, &patTable))
     {
         printf("ERROR: %s crashed while parsing table!");
         deinitFilter(patFilterCallback);
+        return -1;
     }
     else
     {        
-        printPatTable(&patTable);
         deinitFilter(patFilterCallback);
         maxChannel = patTable.serviceInfoCount;
+        return 0;
     }
-    
-    return 0;
 }
 
 static int32_t pmtFilterCallback (uint8_t *buffer)
 {
+    // Check if there was error while parsing.
     if (ERROR == parsePmtTable(buffer, &pmtTable))
     {
         printf("ERROR: %s crashed while parsing table!");
         deinitFilter(pmtFilterCallback);
+        return -1;
     }
     else
-    {        
-        // Change channel.
+    {   
+        // Change channel.     
         getFirstVideoAndAudio();
-        
-        // Close current streams. 
+  
         if (videoStreaming)
         {
             closeStream(video);
             videoStreaming = 0;
         }
         closeStream(audio);
-        
-        // Open streams.
+
         playStream(data.audioPID, audio);    
         if (data.videoPID)
         {
@@ -326,13 +327,13 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
         
         // Show info bar.
         drawInfoBar(currentChannel, pmtTable.teletextExist);
+        return 0;
     }
-    
-    return 0;
 }
 
 static int32_t totFilterCallback (uint8_t *buffer)
 {
+    // Check if there was error while parsing.
     if (ERROR == parseTotTable(buffer))
     {
         printf("ERROR: Error while parsing TOT.\n");

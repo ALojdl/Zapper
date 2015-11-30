@@ -3,12 +3,13 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include "tdp_api.h"
 
-void initGraphic();
+t_Error initGraphic();
 void deinitGraphic();
-int32_t drawVolume(uint8_t volume);
-void drawInfoBar(uint8_t program, uint8_t teletext);
-void removeVolume();
-void removeInfoBar();
+t_Error drawVolume(uint8_t volume);
+t_Error drawInfoBar(uint8_t program, uint8_t teletext);
+t_Error removeVolume();
+t_Error removeInfoBar();
 
 #endif // _GRAPHICS_H

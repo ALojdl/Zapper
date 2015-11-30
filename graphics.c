@@ -15,7 +15,7 @@
 #define INFO_TIME       5
 
 
-/* helper macro for error checking */
+// Helper macro for error checking. 
 #define DFBCHECK(x...)                                      \
 {                                                           \
 DFBResult err = x;                                          \
@@ -253,7 +253,7 @@ void drawInfoBar(uint8_t program, uint8_t teletext)
 	DFBCHECK(primary->DrawString(primary,
                                  /*text to be drawn*/ telxt,
                                  /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
-                                 /*x coordinate of the lower left corner of the resulting text*/ screenWidth/2,
+                                 /*x coordinate of the lower left corner of the resulting text*/ 5*screenWidth/9,
                                  /*y coordinate of the lower left corner of the resulting text*/ 17*screenHeight/20,
                                  /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
     

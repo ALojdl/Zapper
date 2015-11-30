@@ -7,6 +7,7 @@
 #define PAT_INFO_SIZE   4
 #define TELETEXT_TAG    0x56
 #define PAT_TABLE_ID    0x00
+#define TOT_TABLE_ID    0x73
 
 
 void getConfiguration(const char *path, init_data_t *data)
@@ -385,6 +386,53 @@ t_Error printPmtTable(pmt_table_t *pmtTable)
             pmtTable->pmtServiceInfoArray[i].PID); 
     }
     printf("\n============= PMT TABLE SECTION =================\n");
+    
+    return NO_ERROR;
+}
+
+t_Error parseTotTable(const uint8_t *totBuffer)
+{
+    uint8_t tableId;
+    uint16_t mjdTime;
+    uint16_t tmpYear;
+    uint16_t tmpMonth;
+    uint16_t day;
+    uint16_t month;
+    uint16_t year;    
+    uint16_t K;
+    
+    tableId = totBuffer[0];
+   
+    if (tableId != TOT_TABLE_ID)
+    {
+        printf("ERROR: %s fetched no TOT table.\n", __func__);
+        return ERROR;
+    }
+    
+    mjdTime = totBuffer[3];
+    mjdTime = mjdTime << 8;
+    mjdTime += totBuffer[4];
+    
+    printf("INFO: mjd: %hu\n", mjdTime);
+    
+    tmpYear = (int) ((mjdTime - 15078.2) / 365.25);
+    tmpMonth = (int) ((mjdTime - 14956.1 - (int) (tmpYear * 365.25)) 
+        / 30.6001);
+    day = mjdTime - 14956 - (int) (tmpYear * 365.25) 
+        - (int) (tmpMonth * 30.6001);
+        
+    if (tmpMonth == 14 || tmpMonth == 15)
+    {
+        K = 1;
+    }
+    else
+    {
+        K = 0;
+    }
+    year = 1900 + tmpYear + K;
+    month = tmpMonth - 1 - K * 12;
+    
+    printf("INFO: d: %hu, m: %hu, y: %hu\n", day, month, year);   
     
     return NO_ERROR;
 }

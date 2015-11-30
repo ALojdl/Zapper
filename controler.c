@@ -7,6 +7,8 @@
 #define PAT_TABLE_ID            0x00
 #define PAT_PID_NUM             0x00 
 #define PMT_TABLE_ID            0x02
+#define TOT_PID_NUM             0x14
+#define TOT_TABLE_ID            0x73
 #define WAIT_FOR_NEW_PMT        100000 //us
 #define LOOP_COUNT_MAX          10
 #define AUDIO_TYPE_OF_STREAM    3
@@ -30,6 +32,7 @@ static uint8_t minChannel;
 static uint8_t maxChannel;
 static uint8_t currentVolume;
 static uint8_t volumeMuted;
+static uint8_t videoStreaming;
 
 static int32_t pmtFilterCallback (uint8_t *buffer);
 static int32_t patFilterCallback (uint8_t *buffer);
@@ -47,7 +50,8 @@ void initHardware()
     getConfiguration(path, &data);
     initTunerPlayer(data.freq, data.band, DVB_T);
     playStream(data.audioPID, audio);
-    playStream(data.videoPID, video);    
+    playStream(data.videoPID, video);  
+    videoStreaming = 1;  
     
     // Get data about channels on current frequency.
     currentChannel = 0; 
@@ -215,6 +219,8 @@ void getInfo()
     if (currentChannel)
     {
        drawInfoBar(currentChannel, pmtTable.teletextExist);
+       // Debug
+       initFilter(TOT_PID_NUM, TOT_TABLE_ID, totFilterCallback);
     }
     else
     {
@@ -301,7 +307,11 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
         getFirstVideoAndAudio();
         
         // Close current streams. 
-        closeStream(video);
+        if (videoStreaming)
+        {
+            closeStream(video);
+            videoStreaming = 0;
+        }
         closeStream(audio);
         
         // Open streams.
@@ -309,6 +319,7 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
         if (data.videoPID)
         {
             playStream(data.videoPID, video);
+            videoStreaming = 1;
         }
         
         deinitFilter(pmtFilterCallback);
@@ -322,5 +333,15 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
 
 static int32_t totFilterCallback (uint8_t *buffer)
 {
-    return 0;
+    if (ERROR == parseTotTable(buffer))
+    {
+        printf("ERROR: Error while parsing TOT.\n");
+        return -1;
+    }
+    else
+    {
+        printf("INFO: Parsed TOT.\n");
+        deinitFilter(totFilterCallback);
+        return 0;
+    }
 }

@@ -74,5 +74,6 @@ t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable);
 t_Error printPatTable(pat_table_t *patTable);
 t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable);
 t_Error printPmtTable(pmt_table_t *pmtTable);
+t_Error parseTotTable(const uint8_t *totTable);
 
 #endif // _PARSER_H

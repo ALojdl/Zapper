@@ -12,7 +12,7 @@
 #define TEXT_GREEN      255
 #define TEXT_BLUE       255
 #define VOLUME_TIME     3
-#define INFO_TIME       3
+#define INFO_TIME       5
 
 
 /* helper macro for error checking */
@@ -177,7 +177,7 @@ int32_t drawVolume(uint8_t volume)
 	// SPECIFY TIMER
     
     /* specify the timer timeout time */
-    volumeTimerSpec.it_value.tv_sec = 3;
+    volumeTimerSpec.it_value.tv_sec = VOLUME_TIME;
     volumeTimerSpec.it_value.tv_nsec = 0;
     
     /* set the new timer specs */
@@ -189,11 +189,14 @@ int32_t drawVolume(uint8_t volume)
 	return 0;
 }
 
-void drawInfoBar()
+void drawInfoBar(uint8_t program, uint8_t teletext)
 {
     IDirectFBFont *fontInterface = NULL;
 	DFBFontDescription fontDesc;
 	int32_t ret;
+	char prog[11];      // "Program XX"
+	char datum[32];     // "Naziv dana u nedelji mm/dd/yyyy"
+	char telxt[20];     // "Telekst ne postoji"
 	
     /* switch between the displayed and the work buffer (update the display) */
 	DFBCHECK(primary->Flip(primary, NULL, 0));
@@ -203,25 +206,55 @@ void drawInfoBar()
         INFO_BAR_GREEN, INFO_BAR_BLUE, 0xff));
     DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
         4*screenWidth/6, screenHeight/6));
-        
+    
+    // -------------------------------------------------------------------------    
     // ----------------------- TEXT --------------------------------------------
     DFBCHECK(primary->SetColor(primary, TEXT_RED,
         TEXT_GREEN, TEXT_BLUE, 0xff));
 	
 	/* specify the height of the font by raising the appropriate flag and setting the height value */
 	fontDesc.flags = DFDESC_HEIGHT;
-	fontDesc.height = 50;
+	fontDesc.height = 40;
 	
     /* create the font and set the created font for primary surface text drawing */
 	DFBCHECK(dfbInterface->CreateFont(dfbInterface, "/home/galois/fonts/DejaVuSans.ttf", &fontDesc, &fontInterface));
 	DFBCHECK(primary->SetFont(primary, fontInterface));
     
-    /* draw the text */
+    // WRITE PROGRAM NUMBER
+    sprintf(prog, "Program %hu", program);
+    
 	DFBCHECK(primary->DrawString(primary,
-                                 /*text to be drawn*/ "Text Example",
+                                 /*text to be drawn*/ prog,
+                                 /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
+                                 /*x coordinate of the lower left corner of the resulting text*/ screenWidth/5,
+                                 /*y coordinate of the lower left corner of the resulting text*/ 17*screenHeight/20,
+                                 /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
+                                 
+    // WRITE DATE
+    sprintf(datum, "Naziv dana u nedelji mm/dd/yyyy");
+    
+	DFBCHECK(primary->DrawString(primary,
+                                 /*text to be drawn*/ datum,
+                                 /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
+                                 /*x coordinate of the lower left corner of the resulting text*/ screenWidth/5,
+                                 /*y coordinate of the lower left corner of the resulting text*/ 19*screenHeight/20,
+                                 /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
+                                 
+    // WRITE TELETEXT
+    if (teletext)
+    {
+        sprintf(telxt, "Teletekst postoji");    
+    }
+    else
+    {
+        sprintf(telxt, "Teletekst ne postoji");    
+    }
+    
+	DFBCHECK(primary->DrawString(primary,
+                                 /*text to be drawn*/ telxt,
                                  /*number of bytes in the string, -1 for NULL terminated strings*/ -1,
                                  /*x coordinate of the lower left corner of the resulting text*/ screenWidth/2,
-                                 /*y coordinate of the lower left corner of the resulting text*/ 9*screenHeight/10,
+                                 /*y coordinate of the lower left corner of the resulting text*/ 17*screenHeight/20,
                                  /*in case of multiple lines, allign text to left*/ DSTF_LEFT));
     
     /* switch between the displayed and the work buffer (update the display) */
@@ -231,7 +264,7 @@ void drawInfoBar()
 	// SPECIFY TIMER
     
     /* specify the timer timeout time */
-    infoTimerSpec.it_value.tv_sec = 3;
+    infoTimerSpec.it_value.tv_sec = INFO_TIME;
     infoTimerSpec.it_value.tv_nsec = 0;
     
     /* set the new timer specs */
@@ -306,6 +339,7 @@ void removeVolume(union sigval signalArg)
 void deinitGraphic()
 {
     timer_delete(volumeTimerId);
+    timer_delete(infoTimerId);
     primary->Release(primary);
 	dfbInterface->Release(dfbInterface);
     return;

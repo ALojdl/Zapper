@@ -7,7 +7,7 @@
 void initGraphic();
 void deinitGraphic();
 int32_t drawVolume(uint8_t volume);
-void drawInfoBar();
+void drawInfoBar(uint8_t program, uint8_t teletext);
 void removeVolume();
 void removeInfoBar();
 

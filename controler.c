@@ -214,7 +214,7 @@ void getInfo()
     printf("--------------------\n        INFO\n--------------------\n");
     if (currentChannel)
     {
-        printPmtTable(&pmtTable);
+       drawInfoBar(currentChannel, pmtTable.teletextExist);
     }
     else
     {
@@ -314,7 +314,7 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
         deinitFilter(pmtFilterCallback);
         
         // Show info bar.
-        drawInfoBar();
+        drawInfoBar(currentChannel, pmtTable.teletextExist);
     }
     
     return 0;

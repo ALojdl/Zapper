@@ -3,11 +3,20 @@
 
 #include "parser.h"
 
-#define MAX_CHARACTERS  20
-#define PAT_INFO_SIZE   4
-#define TELETEXT_TAG    0x56
-#define PAT_TABLE_ID    0x00
-#define TOT_TABLE_ID    0x73
+#define MAX_CHARACTERS          20
+#define PAT_INFO_SIZE           4
+#define TELETEXT_TAG            0x56
+#define PAT_TABLE_ID            0x00
+#define TOT_TABLE_ID            0x73
+#define DVB_T                   0
+#define DVB_T2                  1
+
+static const char moduleT[] = "DVB-T";
+static const char moduleT2[] = "DVB-T2";
+static const char AC3[] = "AC3";
+static const char MPEG[] = "MPEG";
+static const char MPEG2[] = "MPEG2";
+static const char MPEG4[] = "MPEG4";
 
 
 void getConfiguration(const char *path, init_data_t *data)
@@ -43,7 +52,21 @@ void getConfiguration(const char *path, init_data_t *data)
     fscanf(configFile, "%s", tmp);    
     pch = strtok(tmp,"=");
     pch = strtok(NULL, "=");
-    sscanf(pch, "%s", data->module);
+    sscanf(pch, "%s", tmp);
+    
+    // Make a mapping.
+    if (!strcmp(tmp, moduleT))
+    {
+        data->module = DVB_T;
+    }
+    else if(!strcmp(tmp, moduleT2))
+    {
+        data->module = DVB_T2;
+    }
+    else 
+    {
+        printf("ERROR: %s failed while reading module info.\n", __func__);
+    }
     
     //  [initial_channel]
     fscanf(configFile, "%s", tmp); 
@@ -64,13 +87,41 @@ void getConfiguration(const char *path, init_data_t *data)
     fscanf(configFile, "%s", tmp);    
     pch = strtok(tmp,"=");
     pch = strtok(NULL, "=");
-    sscanf(pch, "%s", data->audioType);
+    sscanf(pch, "%s", tmp);
+    
+    // Make a mapping.
+    if (!strcmp(tmp, AC3))
+    {
+        data->audioType = AUDIO_TYPE_DOLBY_AC3;
+    }
+    else if(!strcmp(tmp, MPEG))
+    {
+        data->audioType = AUDIO_TYPE_MPEG_AUDIO;
+    }
+    else 
+    {
+        printf("ERROR: %s failed while reading audio info.\n", __func__);
+    }
     
     //  vType=mpeg2
     fscanf(configFile, "%s", tmp);    
     pch = strtok(tmp,"=");
     pch = strtok(NULL, "=");
-    sscanf(pch, "%s", data->videoType); 
+    sscanf(pch, "%s", tmp); 
+    
+    // Make a mapping.
+    if (!strcmp(tmp, MPEG2))
+    {
+        data->videoType = VIDEO_TYPE_MPEG2;
+    }
+    else if(!strcmp(tmp, MPEG4))
+    {
+        data->videoType = VIDEO_TYPE_MPEG4;
+    }
+    else 
+    {
+        printf("ERROR: %s failed while reading video info.\n", __func__);
+    }
     
     fclose(configFile);
 }    

@@ -15,7 +15,7 @@ typedef int32_t(*filter_callback_t)(uint8_t *buffer);
 
 t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module);
 t_Error deinitTunerPlayer();
-t_Error playStream(uint32_t PID, stream_t type);
+t_Error playStream(uint32_t PID, stream_t type, uint8_t subType);
 t_Error closeStream();
 t_Error initFilter(uint32_t PID, uint32_t tableID, 
     filter_callback_t callbackFunc);

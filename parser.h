@@ -7,17 +7,21 @@
 
 #define MAX_NUMBER_OF_PIDS_IN_PAT       30
 #define MAX_NUMBER_OF_STREAMS_IN_PMT    30     
+#define AUDIO_TYPE_DOLBY_AC3 	        1
+#define AUDIO_TYPE_MPEG_AUDIO           10
+#define VIDEO_TYPE_MPEG4                41
+#define VIDEO_TYPE_MPEG2                42
 
 // Config file structure. 
 typedef struct _init_data_t
 {
     uint32_t freq;
     uint32_t band;
-    char module[8];
     uint16_t audioPID;
     uint16_t videoPID;
-    char audioType[8];
-    char videoType[8];
+    uint8_t module;
+    uint8_t audioType;
+    uint8_t videoType;
 } init_data_t;
 
 // PAT table structures.

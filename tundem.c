@@ -146,13 +146,13 @@ t_Error deinitTunerPlayer()
 	return NO_ERROR;
 }	
 
-t_Error playStream(uint32_t PID, stream_t type)
+t_Error playStream(uint32_t PID, stream_t type, uint8_t subType)
 {
     // Proverimo da li je u pitanju video stream.
     if (type) 
     {
         if (ERROR == Player_Stream_Create(playerHandle, sourceHandle, PID, 
-		    VIDEO_TYPE_MPEG2, &vStreamHandle))
+		    subType, &vStreamHandle))
 	    {
             printf("ERROR: Player_Stream_Create() VIDEO fail!\n");
         }
@@ -167,7 +167,7 @@ t_Error playStream(uint32_t PID, stream_t type)
     else
     {
         if (ERROR == Player_Stream_Create(playerHandle, sourceHandle, PID, 
-		    AUDIO_TYPE_MPEG_AUDIO, &aStreamHandle))
+		    subType, &aStreamHandle))
 	    {
             printf("ERROR: Player_Stream_Create() AUDIO fail!\n");
         }

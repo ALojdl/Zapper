@@ -45,9 +45,9 @@ void initHardware()
 {                
     // Play stream defined in config file. 
     getConfiguration(path, &data);
-    initTunerPlayer(data.freq, data.band, DVB_T);
-    playStream(data.audioPID, audio);
-    playStream(data.videoPID, video);  
+    initTunerPlayer(data.freq, data.band, data.module);
+    playStream(data.audioPID, audio, data.audioType);
+    playStream(data.videoPID, video, data.videoType);  
     videoStreaming = 1;  
     
     // Get data about channels on current frequency.
@@ -317,10 +317,10 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
         }
         closeStream(audio);
 
-        playStream(data.audioPID, audio);    
+        playStream(data.audioPID, audio, AUDIO_TYPE_MPEG_AUDIO);    
         if (data.videoPID)
         {
-            playStream(data.videoPID, video); 
+            playStream(data.videoPID, video, VIDEO_TYPE_MPEG2); 
             videoStreaming = 1;
         }
         

@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <linux/input.h>
 #include "remote.h"
+#include "globals.h"
 
 
 #define NUM 1
@@ -17,11 +18,11 @@ int32_t getKeys(int32_t count, uint8_t *buf, int32_t *eventsRead)
 {    
     // Read next input event and put it in buffer. 
     int32_t ret;
-    ret = read(inputFileDesc, buf,
-        (size_t)(count * (int)sizeof(struct input_event)));
-    if (0 >= ret)
+    
+    if (0 >= read(inputFileDesc, buf,
+        (size_t)(count * (int)sizeof(struct input_event))))
     {
-        printf("Error code %d", ret);
+        printf("ERROR: %s error code %d", __func__, ret);
         return ERROR;
     }
     
@@ -60,11 +61,13 @@ void* remoteFunction()
         if(eventBuf.type == EV_KEY && (eventBuf.value == EV_VALUE_KEYPRESS || 
             eventBuf.value == EV_VALUE_AUTOREPEAT))
         {
-			printf("\nEvent time: %d sec, %d usec\n",
+#ifdef DEBUG_INFO
+			printf("\nINFO: Event time %d sec, %d usec\n",
 			    (int)eventBuf.time.tv_sec, (int)eventBuf.time.tv_usec);
-			printf("Event type: %hu\n", eventBuf.type);
-			printf("Event code: %hu\n", eventBuf.code);
-			printf("Event value: %d\n", eventBuf.value);
+			printf("INFO: Event type %hu\n", eventBuf.type);
+			printf("INFO: Event code %hu\n", eventBuf.code);
+			printf("INFO: Event value %d\n", eventBuf.value);
+#endif
 			
 			// Pozivam main i gasim thread ako je exit.
 			keyCallFunc(eventBuf.code);

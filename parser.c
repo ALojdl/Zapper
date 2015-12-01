@@ -391,7 +391,7 @@ t_Error printPmtTable(pmt_table_t *pmtTable)
     return NO_ERROR;
 }
 
-t_Error parseTotTable(const uint8_t *totBuffer)
+t_Error parseTotTable(const uint8_t *totBuffer, char *date)
 {
     uint8_t tableId;
     uint16_t mjdTime;
@@ -433,7 +433,8 @@ t_Error parseTotTable(const uint8_t *totBuffer)
     year = 1900 + tmpYear + K;
     month = tmpMonth - 1 - K * 12;
     
-    printf("INFO: d: %hu, m: %hu, y: %hu\n", day, month, year);   
+    sprintf(date, "%hu/%hu/%hu", month, day, year);  
+     
     
     return NO_ERROR;
 }

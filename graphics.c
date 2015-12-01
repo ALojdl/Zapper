@@ -152,7 +152,7 @@ t_Error drawVolume(uint8_t volume)
 	return NO_ERROR;
 }
 
-t_Error drawInfoBar(uint8_t program, uint8_t teletext)
+t_Error drawInfoBar(uint8_t program, uint8_t teletext, const char *dmyTimeChar)
 {
     IDirectFBFont *fontInterface;
 	DFBFontDescription fontDesc;
@@ -162,7 +162,7 @@ t_Error drawInfoBar(uint8_t program, uint8_t teletext)
 	
 	// Prepare strings for info bar.
 	sprintf(prog, "Program %hu", program);
-	sprintf(date, "Naziv dana u nedelji mm/dd/yyyy");
+	sprintf(date, "Naziv dana u nedelji %s", dmyTimeChar);
 	if (teletext)
     {
         sprintf(telxt, "Teletekst postoji");    

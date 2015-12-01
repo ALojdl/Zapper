@@ -30,6 +30,8 @@ static uint8_t maxChannel;
 static uint8_t currentVolume;
 static uint8_t volumeMuted;
 static uint8_t videoStreaming;
+static char dmyTime[12];
+static char parseTime[12];
 
 static int32_t pmtFilterCallback (uint8_t *buffer);
 static int32_t patFilterCallback (uint8_t *buffer);
@@ -40,9 +42,7 @@ void savePath(char *pathToConfigFile);
 
 
 void initHardware()
-{    
-    printf("\n====================\n  INICIJALIZACIJA\n====================\n");
-    
+{                
     // Play stream defined in config file. 
     getConfiguration(path, &data);
     initTunerPlayer(data.freq, data.band, DVB_T);
@@ -54,6 +54,7 @@ void initHardware()
     currentChannel = 0; 
     minChannel = 1;
     initFilter(PAT_PID_NUM, PAT_TABLE_ID, patFilterCallback);
+    sprintf(dmyTime, "10/10/2010");
     
     // Set volume. 
     currentVolume = VOLUME_INIT_VAL;
@@ -64,13 +65,11 @@ void initHardware()
     }
     
     // Init graphics.
-    initGraphic();
+    initGraphic();    
 }
 
 void deinitHardware()
-{
-    printf("\n====================\n DEINICIJALIZACIJA\n====================\n");
-    
+{    
     // Close streams.
     if (videoStreaming)
     {
@@ -127,8 +126,9 @@ void goToChannel(uint16_t channel)
     // If there's no channel, just inform user.
     else
     {
+#ifdef DEBUG_INFO
         printf("INFO: Channel %hu don't exist", channel);
-        fflush(stdout);
+#endif
     }
 }
 
@@ -214,17 +214,16 @@ void muteVolume()
 }
 
 void getInfo()
-{
-    printf("--------------------\n        INFO\n--------------------\n");
+{  
     if (currentChannel)
     {
-       drawInfoBar(currentChannel, pmtTable.teletextExist);
-       // DEBUG: Make a callback function in graphic to update the date.
-       initFilter(TOT_PID_NUM, TOT_TABLE_ID, totFilterCallback);
+       drawInfoBar(currentChannel, pmtTable.teletextExist, dmyTime);
     }
     else
     {
-        printf("--------------------\n        NO INFO\n--------------------\n");
+#ifdef DEBUG_INFO
+        printf("INFO: No information for current channel.\n");
+#endif
     }
 }
 
@@ -243,7 +242,9 @@ static void changeChannel()
     }
     else
     {
-        printf("WARNING: Can't get PMT table for current channel.\n");
+#ifdef DEBUG_INFO
+        printf("INFO: Can't get PMT table for current channel.\n");
+#endif
     }
     return;
 }
@@ -319,14 +320,14 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
         playStream(data.audioPID, audio);    
         if (data.videoPID)
         {
-            playStream(data.videoPID, video);
+            playStream(data.videoPID, video); 
             videoStreaming = 1;
         }
         
         deinitFilter(pmtFilterCallback);
         
         // Show info bar.
-        drawInfoBar(currentChannel, pmtTable.teletextExist);
+        drawInfoBar(currentChannel, pmtTable.teletextExist, dmyTime);
         return 0;
     }
 }
@@ -334,14 +335,14 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
 static int32_t totFilterCallback (uint8_t *buffer)
 {
     // Check if there was error while parsing.
-    if (ERROR == parseTotTable(buffer))
+    if (ERROR == parseTotTable(buffer, dmyTime))
     {
         printf("ERROR: Error while parsing TOT.\n");
+        deinitFilter(totFilterCallback);
         return -1;
     }
     else
     {
-        printf("INFO: Parsed TOT.\n");
         deinitFilter(totFilterCallback);
         return 0;
     }

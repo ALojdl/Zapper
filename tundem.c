@@ -30,7 +30,9 @@ int32_t freqLockCallback(t_LockStatus status)
 	    pthread_mutex_lock(&statusMutex);
         pthread_cond_signal(&statusCondition);
         pthread_mutex_unlock(&statusMutex);
+#ifdef DEBUG_INFO
 		printf("INFO: Succesfully locked to frequency!\n");
+#endif
 	}
 	
 	return 0;
@@ -82,7 +84,9 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
     // Initialize player.
     if (NO_ERROR == Player_Init(&playerHandle))
 	{
+#ifdef DEBUG_INFO
         printf("INFO: Player_Init() success!\n");
+#endif
     }
     else
     {
@@ -94,7 +98,9 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
     // Open source.
 	if (NO_ERROR == Player_Source_Open(playerHandle, &sourceHandle))
 	{
+#ifdef DEBUG_INFO
         printf("INFO: Player_Source_Open() success!\n");
+#endif 
     }
     else
     {
@@ -152,7 +158,9 @@ t_Error playStream(uint32_t PID, stream_t type)
         }
         else
         {
+#ifdef DEBUG_INFO
             printf("INFO: Player_Stream_Create() VIDEO succes!\n");
+#endif
         }
     }
     // Ili ipak audio stream.
@@ -165,7 +173,9 @@ t_Error playStream(uint32_t PID, stream_t type)
         }
         else
         {
+#ifdef DEBUG_INFO
             printf("INFO: Player_Stream_Create() AUDIO succes!\n");
+#endif
         }
     }            
 }
@@ -182,7 +192,9 @@ t_Error closeStream(stream_t type)
         }
         else
         {
+#ifdef DEBUG_INFO
             printf("INFO: Player_Stream_Remove() VIDEO succes!\n");
+#endif
         }
     }
     // Ili je ipak audio stream.
@@ -195,7 +207,9 @@ t_Error closeStream(stream_t type)
         }
         else
         {
+#ifdef DEBUG_INFO
             printf("INFO: Player_Stream_Remove() AUDIO succes!\n");
+#endif 
         }
     }    
 }

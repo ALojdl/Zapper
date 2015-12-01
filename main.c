@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "controler.h"
+#include "graphics.h"
 #include "remote.h"
 
 int32_t callbackFunction(uint16_t keyPressed)
@@ -9,24 +10,31 @@ int32_t callbackFunction(uint16_t keyPressed)
         case KEYCODE_P_MINUS: 
             channelDown();
             break;
+            
         case KEYCODE_P_PLUS: 
             channelUp();
             break;
+            
         case KEYCODE_V_PLUS: 
             volumeUp();
             break;
+            
         case KEYCODE_V_MINUS: 
             volumeDown();
             break;
+            
         case KEYCODE_MUTE: 
             muteVolume();
             break;
+            
         case KEYCODE_EXIT: 
             deinitHardware();
             break;
+            
         case KEYCODE_INFO: 
             getInfo();
-            break;                                                
+            break;   
+                                                         
         default:
             goToChannel(keyPressed - 1);
     }

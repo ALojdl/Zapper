@@ -2,6 +2,7 @@
 #define _CONTROLER_H
 
 #include <stdint.h>
+#include "globals.h"
 
 void savePath(char *pathToConfigFile);
 void initHardware();

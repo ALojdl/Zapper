@@ -9,7 +9,7 @@ t_Error initGraphic();
 void deinitGraphic();
 t_Error drawVolume(uint8_t volume);
 t_Error drawInfoBar(uint8_t program, uint8_t teletext);
-t_Error removeVolume();
-t_Error removeInfoBar();
+void removeVolume();
+void removeInfoBar();
 
 #endif // _GRAPHICS_H

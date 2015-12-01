@@ -115,8 +115,8 @@ t_Error drawVolume(uint8_t volume)
 	int32_t logoWidth;
 	int32_t timerFlags = 0;	
 	
-    // Switch buffers. 
-	DFBCHECK(primary->Flip(primary, NULL, 0));
+	// Make a new name.
+	sprintf(imageName, "volume_%hu.png", volume);
 	
     // Read image, prepare surface descriptor and render image to given surface.
 	DFBCHECK(dfbInterface->CreateImageProvider(dfbInterface, imageName, &provider));
@@ -125,13 +125,18 @@ t_Error drawVolume(uint8_t volume)
 	DFBCHECK(provider->RenderTo(provider, logoSurface, NULL));
 	provider->Release(provider);
 	
-    // Fetch the logo size and add it to the screen. 
+    // Fetch the logo size and add it to the screen buffer. 
 	DFBCHECK(logoSurface->GetSize(logoSurface, &logoWidth, &logoHeight));
 	DFBCHECK(primary->Blit(primary, logoSurface,
 	    NULL, VOLUME_X_COOR, VOLUME_Y_COOR));    
     
     // Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
+	
+	// Fetch the logo size and add it to the second screen buffer. 
+	DFBCHECK(logoSurface->GetSize(logoSurface, &logoWidth, &logoHeight));
+	DFBCHECK(primary->Blit(primary, logoSurface,
+	    NULL, VOLUME_X_COOR, VOLUME_Y_COOR));  
     
     // Specify the timer timeout time and set it, saving the old specifications. 
     volumeTimerSpec.it_value.tv_sec = VOLUME_TIME;
@@ -166,26 +171,23 @@ t_Error drawInfoBar(uint8_t program, uint8_t teletext)
     {
         sprintf(telxt, "Teletekst ne postoji");    
     }
-	
-    // Switch buffers.
-	DFBCHECK(primary->Flip(primary, NULL, 0));
-	
-    // Draw a rectangle representing info bar.    
-    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED, 
-        INFO_BAR_GREEN, INFO_BAR_BLUE, 0xff));
-    DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
-        4*screenWidth/6, screenHeight/6));
     
     // Prepare text font, color and size. Then create font and draw it.
-    DFBCHECK(primary->SetColor(primary, TEXT_RED, TEXT_GREEN, TEXT_BLUE, 0xff));
 	fontDesc.flags = DFDESC_HEIGHT;
 	fontDesc.height = 40;
 	DFBCHECK(dfbInterface->CreateFont(dfbInterface, 
 	    "/home/galois/fonts/DejaVuSans.ttf", &fontDesc, &fontInterface));
 	DFBCHECK(primary->SetFont(primary, fontInterface));    
+	
+	// Draw a rectangle representing info bar.    
+    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED, 
+        INFO_BAR_GREEN, INFO_BAR_BLUE, 0xff));
+    DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
+        4*screenWidth/6, screenHeight/6));
 
     // Write program number, date and teletext to info bar.
-    	DFBCHECK(primary->DrawString(primary, prog, -1, screenWidth/5, 
+    DFBCHECK(primary->SetColor(primary, TEXT_RED, TEXT_GREEN, TEXT_BLUE, 0xff));
+    DFBCHECK(primary->DrawString(primary, prog, -1, screenWidth/5, 
 	    17*screenHeight/20, DSTF_LEFT));
 	DFBCHECK(primary->DrawString(primary, date, -1, screenWidth/5, 
 	    19*screenHeight/20, DSTF_LEFT));  
@@ -194,6 +196,21 @@ t_Error drawInfoBar(uint8_t program, uint8_t teletext)
     
     // Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
+	
+	// Draw a rectangle representing info bar to second buffer.    
+    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED, 
+        INFO_BAR_GREEN, INFO_BAR_BLUE, 0xff));
+    DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
+        4*screenWidth/6, screenHeight/6));
+
+    // Write program number, date and teletext to info bar on second buffer.
+    DFBCHECK(primary->SetColor(primary, TEXT_RED, TEXT_GREEN, TEXT_BLUE, 0xff));
+    DFBCHECK(primary->DrawString(primary, prog, -1, screenWidth/5, 
+	    17*screenHeight/20, DSTF_LEFT));
+	DFBCHECK(primary->DrawString(primary, date, -1, screenWidth/5, 
+	    19*screenHeight/20, DSTF_LEFT));  
+	DFBCHECK(primary->DrawString(primary, telxt, -1, 5*screenWidth/9, 
+	    17*screenHeight/20, DSTF_LEFT));
     
     // Specify the timer timeout time and set new timer.
     infoTimerSpec.it_value.tv_sec = INFO_TIME;
@@ -208,11 +225,8 @@ t_Error drawInfoBar(uint8_t program, uint8_t teletext)
 	return NO_ERROR;
 }
 
-t_Error removeInfoBar()
-{	
-    // Switch buffers.
-	DFBCHECK(primary->Flip(primary, NULL, 0));
-	
+void removeInfoBar()
+{		
 	// Draw transparent rectangle in place of info bar.  
     DFBCHECK(primary->SetColor(primary, INFO_BAR_RED, 
         INFO_BAR_GREEN, INFO_BAR_BLUE, 0x00));
@@ -222,22 +236,22 @@ t_Error removeInfoBar()
 	// Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
+	// Draw transparent rectangle in place of info bar on second buffer.  
+    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED, 
+        INFO_BAR_GREEN, INFO_BAR_BLUE, 0x00));
+    DFBCHECK(primary->FillRectangle(primary, screenWidth/6, 4*screenHeight/5,
+        4*screenWidth/6, screenHeight/6));
+	
 	// Stop timer.
     memset(&infoTimerSpec, 0, sizeof(infoTimerSpec));
     if (-1 == timer_settime(infoTimerId, 0, &infoTimerSpec, &infoTimerSpecOld))
     {
         printf("ERROR: %s failed while stoping timer.\n", __func__);
-        return ERROR:
     }
-	
-    return NO_ERROR;
 }
 
-t_Error removeVolume(union sigval signalArg)
-{	    
-    // Switch buffers.
-	DFBCHECK(primary->Flip(primary, NULL, 0));
-	
+void removeVolume(union sigval signalArg)
+{	    	
 	// Draw transparent rectangle in place of volume bar.  
     DFBCHECK(primary->SetColor(primary, INFO_BAR_RED,
         INFO_BAR_GREEN, INFO_BAR_BLUE, 0x00));
@@ -247,6 +261,12 @@ t_Error removeVolume(union sigval signalArg)
 	// Switch buffers.
 	DFBCHECK(primary->Flip(primary, NULL, 0));
 	
+	// Draw transparent rectangle in place of volume bar on second buffer.  
+    DFBCHECK(primary->SetColor(primary, INFO_BAR_RED,
+        INFO_BAR_GREEN, INFO_BAR_BLUE, 0x00));
+    DFBCHECK(primary->FillRectangle(primary, VOLUME_X_COOR, VOLUME_Y_COOR,
+        200, 200));
+	
 	// Stop timer.
     memset(&volumeTimerSpec, 0, sizeof(volumeTimerSpec));
     
@@ -254,10 +274,7 @@ t_Error removeVolume(union sigval signalArg)
         &volumeTimerSpecOld))
     {
         printf("ERROR: %s failed while stoping timer.\n", __func__);
-        return ERROR:
     }
-	
-    return NO_ERROR;
 }
 
 void deinitGraphic()

@@ -231,7 +231,7 @@ uint8_t findTeletext(const uint8_t* infoSectionBuffer, uint16_t infoSectionLengt
         else
         {
             parsedLength = parsedLength + descriptionLength + 2;
-            printf("DEBUG: parsLength %hu\n", parsedLength);
+            //printf("DEBUG: parsLength %hu\n", parsedLength);
         }
     }
     
@@ -322,6 +322,7 @@ t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable)
 	index = index + 2 + infoLength; 
 	sectionLength -= 13;
 	pmtTable->serviceInfoCount = 0;
+	pmtTable->teletextExist = 0;
 	
 	while (sectionLength)
 	{

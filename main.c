@@ -1,7 +1,30 @@
 #include <stdio.h>
-#include "controler.h"
+#include <string.h>
+#include "middleware.h"
 #include "graphics.h"
 #include "remote.h"
+#include "globals.h"
+
+#define VOLUME_STEP             10
+
+static uint8_t volume;
+static channel_info_t channelInfo;
+static info_data_t infoBarData;
+
+void copyValues(channel_info_t *channelStruct, info_data_t *infoStruct)
+{
+    infoStruct->channelNumber = channelStruct->channelNumber;
+    infoStruct->teletextExist = channelStruct->teletextExist;
+    strcpy(infoStruct->date, channelStruct->date);
+}
+
+int32_t channelChanged(uint8_t channel)
+{
+    channelInfo = getChannelInfo();
+    copyValues(&channelInfo, &infoBarData);
+    drawInfoBar(infoBarData);
+    return 0;
+}
 
 int32_t callbackFunction(uint16_t keyPressed)
 {
@@ -10,26 +33,47 @@ int32_t callbackFunction(uint16_t keyPressed)
         case KEYCODE_P_MINUS: 
         {
             channelDown();
+#ifdef DEBUG_INFO
+            printf("INFO: Channel %hu.\n", channelInfo.channelIndex);
+#endif
             break;
         }            
         case KEYCODE_P_PLUS:
         { 
             channelUp();
+#ifdef DEBUG_INFO
+            printf("INFO: Channel %hu.\n", channelInfo.channelIndex);
+#endif
             break;
         }    
         case KEYCODE_V_PLUS: 
         {
-            volumeUp();
+            volumeUp(VOLUME_STEP);
+            volume = getVolume();
+            drawVolume(volume/VOLUME_STEP);
+#ifdef DEBUG_INFO
+            printf("INFO: Volume %hu.\n", volume);
+#endif
             break;
         }    
         case KEYCODE_V_MINUS: 
         {
-            volumeDown();
+            volumeDown(VOLUME_STEP);
+            volume = getVolume();
+            drawVolume(volume/VOLUME_STEP);
+#ifdef DEBUG_INFO
+            printf("INFO: Volume %hu.\n", volume);
+#endif
             break;
         }    
         case KEYCODE_MUTE: 
         {
             muteVolume();
+            volume = getVolume();
+            drawVolume(volume/VOLUME_STEP);
+#ifdef DEBUG_INFO
+            printf("INFO: Volume %hu.\n", volume);
+#endif
             break;
         }    
         case KEYCODE_EXIT: 
@@ -45,6 +89,9 @@ int32_t callbackFunction(uint16_t keyPressed)
         default:
         {
             goToChannel(keyPressed - 1);
+#ifdef DEBUG_INFO
+            printf("INFO: Channel %hu.\n", channelInfo.channelIndex);
+#endif
         }
     }
     
@@ -63,7 +110,8 @@ int main(int argc, char *argv[])
     }
     
     // Initialize. 
-    initHardware();    
+    initHardware();  
+    registerChannelCallback(channelChanged);
     initRemote(callbackFunction);
     
     // Deinitialize.

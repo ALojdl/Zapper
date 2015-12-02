@@ -39,7 +39,7 @@ SRCS = ./main.c
 SRCS += ./parser.c
 SRCS += ./tundem.c
 SRCS += ./remote.c
-SRCS += ./controler.c
+SRCS += ./middleware.c
 SRCS += ./graphics.c
 
 projekat: 

@@ -1,8 +1,7 @@
 #include <stdio.h>
-#include "controler.h"
+#include "middleware.h"
 #include "tundem.h"
 #include "parser.h"
-#include "graphics.h"
 
 #define PAT_TABLE_ID            0x00
 #define PAT_PID_NUM             0x00 
@@ -14,9 +13,9 @@
 #define AUDIO_TYPE_OF_STREAM    3
 #define VIDEO_TYPE_OF_STREAM    2 
 #define VOLUME_MIN              0
-#define VOLUME_MAX              10
-#define VOLUME_INIT_VAL         5
-#define VOLUME_CONST            200000000
+#define VOLUME_MAX              100
+#define VOLUME_INIT_VAL         50
+#define VOLUME_CONST            20000000
 
 
 static char *path;
@@ -32,6 +31,7 @@ static uint8_t volumeMuted;
 static uint8_t videoStreaming;
 static char dmyTime[12];
 static char parseTime[12];
+static changed_channel_callback_t channelCallback;
 
 static int32_t pmtFilterCallback (uint8_t *buffer);
 static int32_t patFilterCallback (uint8_t *buffer);
@@ -132,7 +132,7 @@ void goToChannel(uint16_t channel)
     }
 }
 
-void volumeUp()
+void volumeUp(uint8_t volumeStep)
 {
     // Check if muted.
     if (volumeMuted)
@@ -142,7 +142,7 @@ void volumeUp()
     // If not, try to add volume.
     else if (currentVolume < VOLUME_MAX)
     {
-        currentVolume ++;
+        currentVolume += volumeStep;
     }
     
     // Apply new volume.
@@ -150,13 +150,9 @@ void volumeUp()
     {
         printf("ERROR: Failed to add volume.\n");
     }
-    else
-    {
-        drawVolume(currentVolume);    
-    }    
 }
 
-void volumeDown()
+void volumeDown(uint8_t volumeStep)
 {
     // Check if muted.
     if (volumeMuted)
@@ -166,7 +162,7 @@ void volumeDown()
     // If not, try to sub volume.
     else if (currentVolume > VOLUME_MIN)
     {
-        currentVolume --;
+        currentVolume -= volumeStep;
     }
     
     // Apply new volume.
@@ -174,10 +170,6 @@ void volumeDown()
     {
         printf("ERROR: Failed to sub volume.\n");
     }
-    else
-    {
-        drawVolume(currentVolume);    
-    }    
 }
 
 void muteVolume()
@@ -192,10 +184,6 @@ void muteVolume()
         {
             printf("ERROR: Failed to unmute.\n");
         }
-        else
-        {
-            drawVolume(currentVolume);    
-        }    
     }
     else
     {
@@ -206,10 +194,6 @@ void muteVolume()
         {
             printf("ERROR: Failed to mute.\n");
         }
-        else
-        {
-            drawVolume(currentVolume * VOLUME_MIN);    
-        }    
     }
 }
 
@@ -325,9 +309,7 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
         }
         
         deinitFilter(pmtFilterCallback);
-        
-        // Show info bar.
-        drawInfoBar(currentChannel, pmtTable.teletextExist, dmyTime);
+        channelCallback(currentChannel);
         return 0;
     }
 }
@@ -346,4 +328,42 @@ static int32_t totFilterCallback (uint8_t *buffer)
         deinitFilter(totFilterCallback);
         return 0;
     }
+}
+
+void registerChannelCallback(changed_channel_callback_t callbackFunction)
+{
+    channelCallback = callbackFunction;
+}
+
+uint8_t getVolume()
+{
+    if (volumeMuted)
+    {
+        return VOLUME_MIN;
+    }
+    else
+    {
+        return currentVolume;
+    }
+}
+
+channel_info_t getChannelInfo()
+{
+    uint8_t i;
+    channel_info_t channelInfo;
+    channelInfo.channelNumber = currentChannel;
+    channelInfo.channelIndex = currentChannel;
+    channelInfo.teletextExist = pmtTable.teletextExist;
+    channelInfo.audioNumber = 0;
+    
+    for (i = 0; i < pmtTable.serviceInfoCount; i++)
+    {
+        if (pmtTable.pmtServiceInfoArray[i].streamType 
+            == AUDIO_TYPE_OF_STREAM)
+        {
+            channelInfo.audioNumber ++;
+        }
+    }
+    
+    return channelInfo;
 }

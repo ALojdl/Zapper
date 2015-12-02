@@ -1,4 +1,8 @@
 #include <stdio.h>
+#include <string.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <time.h>
 #include "middleware.h"
 #include "tundem.h"
 #include "parser.h"
@@ -16,6 +20,7 @@
 #define VOLUME_MAX              100
 #define VOLUME_INIT_VAL         50
 #define VOLUME_CONST            20000000
+#define WAIT                    2
 
 
 static char *path;
@@ -30,8 +35,9 @@ static uint8_t currentVolume;
 static uint8_t volumeMuted;
 static uint8_t videoStreaming;
 static char dmyTime[12];
-static char parseTime[12];
 static changed_channel_callback_t channelCallback;
+static pthread_cond_t statusCondition = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t statusMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int32_t pmtFilterCallback (uint8_t *buffer);
 static int32_t patFilterCallback (uint8_t *buffer);
@@ -54,7 +60,7 @@ void initHardware()
     currentChannel = 0; 
     minChannel = 1;
     initFilter(PAT_PID_NUM, PAT_TABLE_ID, patFilterCallback);
-    sprintf(dmyTime, "10/10/2010");
+    sprintf(dmyTime, "--/--/----");
     
     // Set volume. 
     currentVolume = VOLUME_INIT_VAL;
@@ -197,20 +203,6 @@ void muteVolume()
     }
 }
 
-void getInfo()
-{  
-    if (currentChannel)
-    {
-       drawInfoBar(currentChannel, pmtTable.teletextExist, dmyTime);
-    }
-    else
-    {
-#ifdef DEBUG_INFO
-        printf("INFO: No information for current channel.\n");
-#endif
-    }
-}
-
 void savePath(char *pathToConfigFile)
 {
     path = pathToConfigFile;
@@ -218,11 +210,31 @@ void savePath(char *pathToConfigFile)
 
 static void changeChannel()
 {
+    struct timespec lockStatusWaitTime;
+	struct timeval currentTime;
+	
+	gettimeofday(&currentTime,NULL);
+    lockStatusWaitTime.tv_sec = currentTime.tv_sec + WAIT;
+	
     // Check if there is PMT table for current channel.
     if (currentChannel)
     {
+        deinitFilter(totFilterCallback);
         initFilter(patTable.patServiceInfoArray[currentChannel - 1].PID,
             PMT_TABLE_ID, pmtFilterCallback);
+            
+        pthread_mutex_lock(&statusMutex);
+        if (ETIMEDOUT == pthread_cond_timedwait
+            (&statusCondition, &statusMutex, &lockStatusWaitTime))
+        {
+            printf("ERROR: %s lock timeout exceeded!\n", __func__);
+            deinitFilter(pmtFilterCallback);
+            return; // Error handling!
+        }
+        pthread_mutex_unlock(&statusMutex);
+        
+        deinitFilter(pmtFilterCallback);
+        initFilter(TOT_PID_NUM, TOT_TABLE_ID, totFilterCallback);
     }
     else
     {
@@ -275,6 +287,7 @@ static int32_t patFilterCallback (uint8_t *buffer)
     else
     {        
         deinitFilter(patFilterCallback);
+        initFilter(TOT_PID_NUM, TOT_TABLE_ID, totFilterCallback);
         maxChannel = patTable.serviceInfoCount;
         return 0;
     }
@@ -282,6 +295,10 @@ static int32_t patFilterCallback (uint8_t *buffer)
 
 static int32_t pmtFilterCallback (uint8_t *buffer)
 {
+    pthread_mutex_lock(&statusMutex);
+    pthread_cond_signal(&statusCondition);
+    pthread_mutex_unlock(&statusMutex);
+        
     // Check if there was error while parsing.
     if (ERROR == parsePmtTable(buffer, &pmtTable))
     {
@@ -308,7 +325,6 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
             videoStreaming = 1;
         }
         
-        deinitFilter(pmtFilterCallback);
         channelCallback(currentChannel);
         return 0;
     }
@@ -323,11 +339,8 @@ static int32_t totFilterCallback (uint8_t *buffer)
         deinitFilter(totFilterCallback);
         return -1;
     }
-    else
-    {
-        deinitFilter(totFilterCallback);
-        return 0;
-    }
+    printf("INFO: TOT arrived!\n");
+    return 0;
 }
 
 void registerChannelCallback(changed_channel_callback_t callbackFunction)
@@ -354,6 +367,7 @@ channel_info_t getChannelInfo()
     channelInfo.channelNumber = currentChannel;
     channelInfo.channelIndex = currentChannel;
     channelInfo.teletextExist = pmtTable.teletextExist;
+    strcpy(channelInfo.date, dmyTime);
     channelInfo.audioNumber = 0;
     
     for (i = 0; i < pmtTable.serviceInfoCount; i++)

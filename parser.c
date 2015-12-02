@@ -442,9 +442,35 @@ t_Error printPmtTable(pmt_table_t *pmtTable)
     return NO_ERROR;
 }
 
+int8_t findLocalOffset(const uint8_t* buffer, uint16_t bufferLength)
+{
+    uint16_t parsedLength = 0;
+    uint8_t descriptorTag;
+    uint8_t descriptorLength;
+    uint8_t countryCode[3];
+    
+    while (parsedLength < bufferLength)
+    {
+        descriptorTag = buffer[parsedLength];
+        descriptorLength = buffer[parsedLength + 1];
+        
+        if (descriptorTag == 0x58)
+        {
+            countryCode[0] = buffer[parsedLength + 2];
+            countryCode[1] = buffer[parsedLength + 3];
+            countryCode[2] = buffer[parsedLength + 4];
+            printf("NASAO: %c%c%c\n", countryCode[0], countryCode[1], countryCode[2]);
+            fflush(stdout);
+        }
+        parsedLength += descriptorLength;  
+    }
+    
+    return 0;
+}
+
 t_Error parseTotTable(const uint8_t *totBuffer, char *date)
 {
-    uint8_t tableId;
+    uint8_t tableId = totBuffer[0];
     uint16_t mjdTime;
     uint16_t tmpYear;
     uint16_t tmpMonth;
@@ -452,8 +478,9 @@ t_Error parseTotTable(const uint8_t *totBuffer, char *date)
     uint16_t month;
     uint16_t year;    
     uint16_t K;
-    
-    tableId = totBuffer[0];
+    uint16_t loopLength;
+    uint16_t parsedLength = 0;
+    int8_t offset;
    
     if (tableId != TOT_TABLE_ID)
     {
@@ -465,7 +492,16 @@ t_Error parseTotTable(const uint8_t *totBuffer, char *date)
     mjdTime = mjdTime << 8;
     mjdTime += totBuffer[4];
     
-    printf("INFO: mjd: %hu\n", mjdTime);
+    loopLength = totBuffer[5];
+    loopLength = loopLength & 0x0F;
+    loopLength = loopLength << 8;
+    loopLength += totBuffer[6];
+    
+    offset = findLocalOffset(&totBuffer[7], loopLength);
+    
+    printf("INFO: mjd = %hu\n", mjdTime);
+    printf("INFO: loopLenght = %hu\n", loopLength);
+    printf("INFO: offset = %hu\n", offset);
     
     tmpYear = (int) ((mjdTime - 15078.2) / 365.25);
     tmpMonth = (int) ((mjdTime - 14956.1 - (int) (tmpYear * 365.25)) 

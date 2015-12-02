@@ -33,17 +33,11 @@ int32_t callbackFunction(uint16_t keyPressed)
         case KEYCODE_P_MINUS: 
         {
             channelDown();
-#ifdef DEBUG_INFO
-            printf("INFO: Channel %hu.\n", channelInfo.channelIndex);
-#endif
             break;
         }            
         case KEYCODE_P_PLUS:
         { 
             channelUp();
-#ifdef DEBUG_INFO
-            printf("INFO: Channel %hu.\n", channelInfo.channelIndex);
-#endif
             break;
         }    
         case KEYCODE_V_PLUS: 
@@ -51,9 +45,6 @@ int32_t callbackFunction(uint16_t keyPressed)
             volumeUp(VOLUME_STEP);
             volume = getVolume();
             drawVolume(volume/VOLUME_STEP);
-#ifdef DEBUG_INFO
-            printf("INFO: Volume %hu.\n", volume);
-#endif
             break;
         }    
         case KEYCODE_V_MINUS: 
@@ -61,9 +52,6 @@ int32_t callbackFunction(uint16_t keyPressed)
             volumeDown(VOLUME_STEP);
             volume = getVolume();
             drawVolume(volume/VOLUME_STEP);
-#ifdef DEBUG_INFO
-            printf("INFO: Volume %hu.\n", volume);
-#endif
             break;
         }    
         case KEYCODE_MUTE: 
@@ -71,9 +59,6 @@ int32_t callbackFunction(uint16_t keyPressed)
             muteVolume();
             volume = getVolume();
             drawVolume(volume/VOLUME_STEP);
-#ifdef DEBUG_INFO
-            printf("INFO: Volume %hu.\n", volume);
-#endif
             break;
         }    
         case KEYCODE_EXIT: 
@@ -83,15 +68,14 @@ int32_t callbackFunction(uint16_t keyPressed)
         }    
         case KEYCODE_INFO: 
         {
-            getInfo();
+            channelInfo = getChannelInfo();
+            copyValues(&channelInfo, &infoBarData);
+            drawInfoBar(infoBarData);
             break;   
         }                                                 
         default:
         {
             goToChannel(keyPressed - 1);
-#ifdef DEBUG_INFO
-            printf("INFO: Channel %hu.\n", channelInfo.channelIndex);
-#endif
         }
     }
     

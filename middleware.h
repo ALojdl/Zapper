@@ -24,7 +24,6 @@ void goToChannel(uint16_t channel);
 void volumeUp(uint8_t volumeStep);
 void volumeDown(uint8_t volumeStep);
 void muteVolume();
-void getInfo();
 void registerChannelCallback(changed_channel_callback_t callbackFunction);
 uint8_t getVolume();
 channel_info_t getChannelInfo();

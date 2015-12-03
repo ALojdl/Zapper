@@ -3,8 +3,13 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include "globals.h"
 #include "tdp_api.h"
+
+typedef enum _graphic_error_t
+{
+    GRAPHIC_ERROR = -1,
+    GRAPHIC_NO_ERROR
+}graphic_error_t;
 
 typedef struct _info_data_t
 {

@@ -2,7 +2,12 @@
 #define _CONTROLER_H
 
 #include <stdint.h>
-#include "globals.h"
+
+typedef enum _middleware_error_t
+{
+    MIDDLEWARE_ERROR = -1,
+    MIDDLEWARE_NO_ERROR
+}middleware_error_t;
 
 typedef int32_t (*changed_channel_callback_t)(uint8_t channel);
 

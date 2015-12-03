@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include "tundem.h"
 
+#define DEBUG_INFO
+
 #define WAIT 10     // Number of seconds waiting for frequency locking.
 #define MHz 1000000 // Multiplication constant for transform MHz -> Hz
 
@@ -38,7 +40,7 @@ int32_t freqLockCallback(t_LockStatus status)
 	return 0;
 }
 
-t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
+tundem_error_t initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
 {   
     struct timespec lockStatusWaitTime;
 	struct timeval currentTime;
@@ -50,7 +52,7 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
     if (ERROR == Tuner_Init())
 	{
 		printf("ERROR: Error with Tuner_Init()!\n");
-		return ERROR;
+		return TUNDEM_ERROR;
 	}
 	
 	// Register callback function and check for error. 
@@ -58,7 +60,7 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
 	{
 		printf("ERROR: Error with Tuner_Register_Status_Callback()!\n");
 		Tuner_Deinit();
-		return ERROR;
+		return TUNDEM_ERROR;
 	}
 	
 	// Lock to frequency and check for error.
@@ -67,7 +69,7 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
 		printf("ERROR: Eror with Tuner_Lock_To_Frequency()!\n");
 		Tuner_Unregister_Status_Callback(freqLockCallback);
 		Tuner_Deinit(); 
-		return ERROR; 		
+		return TUNDEM_ERROR; 		
 	}
 	
 	// Wait for tuner to lock.
@@ -77,7 +79,7 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
     {
         printf("ERROR: %s lock timeout exceeded!\n", __func__);
         Tuner_Deinit();
-        return ERROR;
+        return TUNDEM_ERROR;
     }
     pthread_mutex_unlock(&statusMutex);
     
@@ -92,7 +94,7 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
     {
         printf("ERROR: Player_Init() fail!\n");
         Tuner_Deinit();
-        return ERROR;
+        return TUNDEM_ERROR;
     }
 
     // Open source.
@@ -107,46 +109,46 @@ t_Error initTunerPlayer(uint32_t freq, uint32_t band, t_Module module)
         printf("ERROR: Player_Source_Open() fail!\n");
 		Player_Deinit(playerHandle);
         Tuner_Deinit();
-        return ERROR;
+        return TUNDEM_ERROR;
     }
 	
-	return NO_ERROR;
+	return TUNDEM_NO_ERROR;
 }
 
-t_Error deinitTunerPlayer()
+tundem_error_t deinitTunerPlayer()
 {    
     // Close source.
     if (ERROR == Player_Source_Close(playerHandle, sourceHandle))
     {
         printf("ERROR: Error with Player_Source_Close()!\n");
-        return ERROR;
+        return TUNDEM_ERROR;
     }
     
     // Deinit player.
     if (ERROR == Player_Deinit(playerHandle))
     {
         printf("ERROR: Error with Player_Deinit()!\n");
-        return ERROR;
+        return TUNDEM_ERROR;
     }
     
     // Unregister callback function.
     if (ERROR == Tuner_Unregister_Status_Callback(freqLockCallback))
     {
         printf("ERROR: Error with Tuner_Unregister_Status_Callback()!\n");
-        return ERROR;
+        return TUNDEM_ERROR;
     }
     
     // Deinitialize tuner.
 	if (ERROR == Tuner_Deinit())
 	{
 	    printf("ERROR: Error with Tuner_Deinit()!\n");
-	    return ERROR;
+	    return TUNDEM_ERROR;
 	}
 	
-	return NO_ERROR;
+	return TUNDEM_NO_ERROR;
 }	
 
-t_Error playStream(uint32_t PID, stream_t type, uint8_t subType)
+tundem_error_t playStream(uint32_t PID, stream_t type, uint8_t subType)
 {
     // Proverimo da li je u pitanju video stream.
     if (type) 
@@ -155,12 +157,14 @@ t_Error playStream(uint32_t PID, stream_t type, uint8_t subType)
 		    subType, &vStreamHandle))
 	    {
             printf("ERROR: Player_Stream_Create() VIDEO fail!\n");
+            return TUNDEM_ERROR;
         }
         else
         {
 #ifdef DEBUG_INFO
             printf("INFO: Player_Stream_Create() VIDEO succes!\n");
 #endif
+            return TUNDEM_NO_ERROR;
         }
     }
     // Ili ipak audio stream.
@@ -170,17 +174,19 @@ t_Error playStream(uint32_t PID, stream_t type, uint8_t subType)
 		    subType, &aStreamHandle))
 	    {
             printf("ERROR: Player_Stream_Create() AUDIO fail!\n");
+            return TUNDEM_ERROR;
         }
         else
         {
 #ifdef DEBUG_INFO
             printf("INFO: Player_Stream_Create() AUDIO succes!\n");
 #endif
+            return TUNDEM_NO_ERROR;
         }
     }            
 }
 
-t_Error closeStream(stream_t type)
+tundem_error_t closeStream(stream_t type)
 {
     // Proverimo da li je u pitanju video stream.
     if (type)
@@ -189,12 +195,14 @@ t_Error closeStream(stream_t type)
             vStreamHandle))
         {
             printf("ERROR: Player_Stream_Remove() VIDEO fail!\n");
+            return TUNDEM_ERROR;
         }
         else
         {
 #ifdef DEBUG_INFO
             printf("INFO: Player_Stream_Remove() VIDEO succes!\n");
 #endif
+            return TUNDEM_NO_ERROR;
         }
     }
     // Ili je ipak audio stream.
@@ -204,68 +212,70 @@ t_Error closeStream(stream_t type)
             aStreamHandle))
         {
             printf("ERROR: Player_Stream_Remove() AUDIO fail!\n");
+            return TUNDEM_ERROR;
         }
         else
         {
 #ifdef DEBUG_INFO
             printf("INFO: Player_Stream_Remove() AUDIO succes!\n");
 #endif 
+            return TUNDEM_NO_ERROR;
         }
     }    
 }
 
-t_Error initFilter(uint32_t PID, uint32_t tableID, filter_callback_t callbackFunc)
+tundem_error_t initFilter(uint32_t PID, uint32_t tableID, filter_callback_t callbackFunc)
 {	
     if (ERROR == Demux_Set_Filter(playerHandle, PID, tableID, &filterHandle))
     {
         printf("ERROR: %s failed to set filter().\n", __func__);
-        return ERROR;
+        return TUNDEM_ERROR;
     }
     
     if (ERROR == Demux_Register_Section_Filter_Callback(callbackFunc))
     {
         printf("ERROR: %s failed to register callback function.\n", __func__);
-        return ERROR;
+        return TUNDEM_ERROR;
     }
     
-    return NO_ERROR;
+    return TUNDEM_NO_ERROR;
 }
 
-t_Error deinitFilter(filter_callback_t callbackFunc)
+tundem_error_t deinitFilter(filter_callback_t callbackFunc)
 {
     if (ERROR == Demux_Unregister_Section_Filter_Callback(callbackFunc))
     {
         printf("ERROR: %s failed to unregister callback function.\n", __func__);
-        return ERROR;
+        return TUNDEM_ERROR;
     }
     
     if (ERROR == Demux_Free_Filter(playerHandle, filterHandle))
     {
         printf("ERROR: %s failed to free filter.\n", __func__);
-        return ERROR;
+        return TUNDEM_ERROR;
     }
         
-    return NO_ERROR;
+    return TUNDEM_NO_ERROR;
 }
 
-t_Error volumeGet(uint32_t *volume)
+tundem_error_t volumeGet(uint32_t *volume)
 {   
 	if (ERROR == Player_Volume_Get(playerHandle, volume))
 	{
 	    printf("ERROR: Player_Volume_Get() breaked.\n");
-	    return ERROR;
+	    return TUNDEM_ERROR;
 	}
 	
-	return NO_ERROR;
+	return TUNDEM_NO_ERROR;
 }
 
-t_Error volumeSet(uint32_t volume)
+tundem_error_t volumeSet(uint32_t volume)
 {
 	if (ERROR == Player_Volume_Set(playerHandle, volume))
 	{
 	    printf("ERROR: Player_Volume_Set() breaked.\n");
-	    return ERROR;
+	    return TUNDEM_ERROR;
 	}
 	
-	return NO_ERROR;
+	return TUNDEM_NO_ERROR;
 }

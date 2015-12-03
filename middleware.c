@@ -7,6 +7,8 @@
 #include "tundem.h"
 #include "parser.h"
 
+#define DEBUG_INFO
+
 #define PAT_TABLE_ID            0x00
 #define PAT_PID_NUM             0x00 
 #define PMT_TABLE_ID            0x02
@@ -66,13 +68,10 @@ void initHardware()
     // Set volume. 
     currentVolume = VOLUME_INIT_VAL;
     volumeMuted = 0;
-    if (ERROR == volumeSet(currentVolume * VOLUME_CONST))
+    if (TUNDEM_ERROR == volumeSet(currentVolume * VOLUME_CONST))
     {
         printf("ERROR: %s failed to set initial volume.\n", __func__);
-    }
-    
-    // Init graphics.
-    initGraphic();    
+    }    
 }
 
 void deinitHardware()
@@ -87,7 +86,6 @@ void deinitHardware()
     
     // Deinit tuner, player and graphics.
     deinitTunerPlayer();
-    deinitGraphic();
 }
 
 void channelDown()
@@ -124,6 +122,7 @@ void channelUp()
 
 void goToChannel(uint16_t channel)
 {
+    printf("--------------------------------------------\n");
     // Check if channel is in the list. 
     if (channel >= minChannel && channel <= maxChannel)
     {
@@ -133,9 +132,9 @@ void goToChannel(uint16_t channel)
     // If there's no channel, just inform user.
     else
     {
-#ifdef DEBUG_INFO
+
         printf("INFO: Channel %hu don't exist", channel);
-#endif
+
     }
 }
 
@@ -153,7 +152,7 @@ void volumeUp(uint8_t volumeStep)
     }
     
     // Apply new volume.
-    if (ERROR == volumeSet(currentVolume * VOLUME_CONST))
+    if (TUNDEM_ERROR == volumeSet(currentVolume * VOLUME_CONST))
     {
         printf("ERROR: Failed to add volume.\n");
     }
@@ -173,7 +172,7 @@ void volumeDown(uint8_t volumeStep)
     }
     
     // Apply new volume.
-    if (ERROR == volumeSet(currentVolume * VOLUME_CONST))
+    if (TUNDEM_ERROR == volumeSet(currentVolume * VOLUME_CONST))
     {
         printf("ERROR: Failed to sub volume.\n");
     }
@@ -187,7 +186,7 @@ void muteVolume()
         volumeMuted = 0;
         
         // Apply new volume.
-        if (ERROR == volumeSet(currentVolume * VOLUME_CONST))
+        if (TUNDEM_ERROR == volumeSet(currentVolume * VOLUME_CONST))
         {
             printf("ERROR: Failed to unmute.\n");
         }
@@ -197,7 +196,7 @@ void muteVolume()
         volumeMuted = 1;
         
         // Apply new volume.
-        if (ERROR == volumeSet(VOLUME_MIN * VOLUME_CONST))
+        if (TUNDEM_ERROR == volumeSet(VOLUME_MIN * VOLUME_CONST))
         {
             printf("ERROR: Failed to mute.\n");
         }
@@ -279,7 +278,7 @@ static void getFirstVideoAndAudio()
 static int32_t patFilterCallback (uint8_t *buffer)
 {
     // Check if there was error while parsing.
-    if (ERROR == parsePatTable(buffer, &patTable))
+    if (PARSER_ERROR == parsePatTable(buffer, &patTable))
     {
         printf("ERROR: %s crashed while parsing table!");
         deinitFilter(patFilterCallback);
@@ -301,7 +300,7 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
     pthread_mutex_unlock(&statusMutex);
         
     // Check if there was error while parsing.
-    if (ERROR == parsePmtTable(buffer, &pmtTable))
+    if (PARSER_ERROR == parsePmtTable(buffer, &pmtTable))
     {
         printf("ERROR: %s crashed while parsing table!");
         deinitFilter(pmtFilterCallback);
@@ -334,7 +333,7 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
 static int32_t totFilterCallback (uint8_t *buffer)
 {
     // Check if there was error while parsing.
-    if (ERROR == parseTotTable(buffer, &streamTime))
+    if (PARSER_ERROR == parseTotTable(buffer, &streamTime))
     {
         printf("ERROR: Error while parsing TOT.\n");
         deinitFilter(totFilterCallback);

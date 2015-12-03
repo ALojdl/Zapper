@@ -12,7 +12,7 @@
 #define TEXT_GREEN      255
 #define TEXT_BLUE       255
 #define VOLUME_TIME     3
-#define INFO_TIME       5
+#define INFO_TIME       3
 
 
 // Helper macro for error checking. 

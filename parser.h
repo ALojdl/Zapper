@@ -2,7 +2,6 @@
 #define _PARSER_H
 
 #include <stdint.h>
-#include "globals.h"
 #include "tdp_api.h"
 
 #define MAX_NUMBER_OF_PIDS_IN_PAT       30
@@ -11,6 +10,13 @@
 #define AUDIO_TYPE_MPEG_AUDIO           10
 #define VIDEO_TYPE_MPEG4                41
 #define VIDEO_TYPE_MPEG2                42
+
+
+typedef enum _parser_error_t
+{
+    PARSER_ERROR = -1,
+    PARSER_NO_ERROR
+}parser_error_t;
 
 // Config file structure. 
 typedef struct _init_data_t
@@ -85,10 +91,10 @@ typedef struct _stream_time_t
 } stream_time_t;
 
 void getConfiguration(const char *path, init_data_t *data);
-t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable);
-t_Error printPatTable(pat_table_t *patTable);
-t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable);
-t_Error printPmtTable(pmt_table_t *pmtTable);
-t_Error parseTotTable(const uint8_t *totTable, stream_time_t *streamTime);
+parser_error_t parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable);
+parser_error_t printPatTable(pat_table_t *patTable);
+parser_error_t parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable);
+parser_error_t printPmtTable(pmt_table_t *pmtTable);
+parser_error_t parseTotTable(const uint8_t *totTable, stream_time_t *streamTime);
 
 #endif // _PARSER_H

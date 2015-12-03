@@ -4,8 +4,8 @@
 #include <fcntl.h>
 #include <linux/input.h>
 #include "remote.h"
-#include "globals.h"
 
+#define DEBUG_INFO
 
 #define NUM 1
 #define MAX_CHARACTERS 20
@@ -14,7 +14,7 @@ static pthread_t remote;
 static int32_t inputFileDesc;
 static key_callback_t keyCallFunc;
 
-int32_t getKeys(int32_t count, uint8_t *buf, int32_t *eventsRead)
+remote_error_t getKeys(int32_t count, uint8_t *buf, int32_t *eventsRead)
 {    
     // Read next input event and put it in buffer. 
     int32_t ret;
@@ -23,13 +23,13 @@ int32_t getKeys(int32_t count, uint8_t *buf, int32_t *eventsRead)
         (size_t)(count * (int)sizeof(struct input_event))))
     {
         printf("ERROR: %s error code %d", __func__, ret);
-        return ERROR;
+        return REMOTE_ERROR;
     }
     
     // Calculate number of read events. 
     *eventsRead = ret / (int)sizeof(struct input_event);
     
-    return NO_ERROR;
+    return REMOTE_NO_ERROR;
 }
 
 void* remoteFunction()
@@ -45,7 +45,7 @@ void* remoteFunction()
     if(inputFileDesc == -1)
     {
         printf("ERROR: Error while opening device (%s) !", strerror(errno));
-		return (void*)ERROR;
+		return (void*)REMOTE_ERROR;
     }
         
     while(!exit){
@@ -54,7 +54,7 @@ void* remoteFunction()
         if(getKeys(NUM, (uint8_t*)&eventBuf, &eventCnt))
         {
 			printf("Error while reading input events !");
-			return (void*)ERROR;
+			return (void*)REMOTE_ERROR;
 		}
 		
 		// Filter input events. 
@@ -77,28 +77,32 @@ void* remoteFunction()
 			}    
 		}
     }
-	return (void*)NO_ERROR;
+	return (void*)REMOTE_NO_ERROR;
 }
 
-t_Error initRemote(key_callback_t keyFunc)
+remote_error_t initRemote()
 {
     if (pthread_create(&remote, NULL, remoteFunction, NULL))
     {
         printf("ERROR: Error creating remote thread!\n");
-		return ERROR;
+		return REMOTE_ERROR;
     }
-    keyCallFunc = keyFunc;
-    return NO_ERROR;
+    return REMOTE_NO_ERROR;
 }
 
-t_Error deinitRemote()
+void registerRemoteCallback(key_callback_t keyFunc)
+{
+    keyCallFunc = keyFunc;
+}
+
+remote_error_t deinitRemote()
 {
 	if(pthread_join(remote, NULL))
     {
         printf("ERROR: Error during pthread_join!\n");
-		return ERROR;
+		return REMOTE_ERROR;
     }
             
-    return NO_ERROR;
+    return REMOTE_NO_ERROR;
 } 
 

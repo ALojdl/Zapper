@@ -4,6 +4,8 @@
 #include <time.h>
 #include "parser.h"
 
+#define DEBUG_INFO
+
 #define MAX_CHARACTERS          20
 #define PAT_INFO_SIZE           4
 #define TELETEXT_TAG            0x56
@@ -127,7 +129,7 @@ void getConfiguration(const char *path, init_data_t *data)
     fclose(configFile);
 }    
 
-t_Error parsePatHeader(const uint8_t *patHeaderBuffer, pat_header_t *patHeader)
+parser_error_t parsePatHeader(const uint8_t *patHeaderBuffer, pat_header_t *patHeader)
 {    
     uint16_t tmp;
     
@@ -160,7 +162,7 @@ t_Error parsePatHeader(const uint8_t *patHeaderBuffer, pat_header_t *patHeader)
     return NO_ERROR;
 }
 
-t_Error parsePatServiceInfo(const uint8_t *patServiceInfoBuffer,
+parser_error_t parsePatServiceInfo(const uint8_t *patServiceInfoBuffer,
     pat_service_info_t *patServiceInfo)
 {
     uint16_t tmp;
@@ -168,7 +170,7 @@ t_Error parsePatServiceInfo(const uint8_t *patServiceInfoBuffer,
     if (patServiceInfoBuffer == NULL || patServiceInfo == NULL)
     {
         printf("ERROR: %s received parameters are not ok.\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     // Get PAT program number.
@@ -185,10 +187,10 @@ t_Error parsePatServiceInfo(const uint8_t *patServiceInfoBuffer,
     tmp = tmp & 0x1FFF;
     patServiceInfo->PID = tmp;
     
-    return NO_ERROR;
+    return PARSER_NO_ERROR;
 }
 
-t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable)
+parser_error_t parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable)
 {
     uint8_t *currentBufferPosition = NULL;
     uint32_t parsedLength = 0;
@@ -196,13 +198,13 @@ t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable)
     if (patSectionBuffer == NULL || patTable == NULL)
     {
         printf("ERROR: %s received parameters are not ok\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     if (parsePatHeader(patSectionBuffer, &(patTable->patHeader)) != NO_ERROR)
     {
         printf("ERROR: %s parsing PAT header.\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     parsedLength = 9; 
@@ -234,17 +236,17 @@ t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable)
         }    
     }
     
-    return NO_ERROR;
+    return PARSER_NO_ERROR;
 }
 
-t_Error printPatTable(pat_table_t *patTable)
+parser_error_t printPatTable(pat_table_t *patTable)
 {
     uint8_t i = 0;
     
     if (patTable == NULL)
     {
         printf("ERROR: %s received parameter is not ok.\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     printf("\n------------ PAT TABLE SECTION ------------------\n");
@@ -262,7 +264,7 @@ t_Error printPatTable(pat_table_t *patTable)
     }
     printf("\n============= PAT TABLE SECTION =================\n");
     
-    return NO_ERROR;
+    return PARSER_NO_ERROR;
 }
 
 uint8_t findTeletext(const uint8_t* infoSectionBuffer, uint16_t infoSectionLength)
@@ -290,14 +292,14 @@ uint8_t findTeletext(const uint8_t* infoSectionBuffer, uint16_t infoSectionLengt
     return 0;
 }
 
-t_Error parsePmtHeader(const uint8_t *pmtHeaderBuffer, pmt_header_t *pmtHeader)
+parser_error_t parsePmtHeader(const uint8_t *pmtHeaderBuffer, pmt_header_t *pmtHeader)
 {    
     uint16_t tmp;
     
     if (pmtHeaderBuffer == NULL || pmtHeader == NULL)
     {
         printf("ERROR: %s received parameters are not ok.\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
 
     pmtHeader->tableId = pmtHeaderBuffer[0]; 
@@ -316,10 +318,10 @@ t_Error parsePmtHeader(const uint8_t *pmtHeaderBuffer, pmt_header_t *pmtHeader)
     tmp = tmp & 0x1F;
     pmtHeader->versionNumber = tmp;
 
-    return NO_ERROR;
+    return PARSER_NO_ERROR;
 }
 
-t_Error parsePmtServiceInfo(const uint8_t *pmtServiceInfoBuffer,
+parser_error_t parsePmtServiceInfo(const uint8_t *pmtServiceInfoBuffer,
     pmt_stream_t *pmtStreamInfo)
 {
     uint16_t tmp;
@@ -327,7 +329,7 @@ t_Error parsePmtServiceInfo(const uint8_t *pmtServiceInfoBuffer,
     if (pmtServiceInfoBuffer == NULL || pmtStreamInfo == NULL)
     {
         printf("ERROR: %s received parameters are not ok.\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     // Get PMT stream type.
@@ -340,10 +342,10 @@ t_Error parsePmtServiceInfo(const uint8_t *pmtServiceInfoBuffer,
     tmp = tmp & 0x1FFF;
     pmtStreamInfo->PID = tmp;
     
-    return NO_ERROR;
+    return PARSER_NO_ERROR;
 }
 
-t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable)
+parser_error_t parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable)
 {
     uint8_t *currentBufferPosition = NULL;
     uint16_t sectionLength;
@@ -353,13 +355,13 @@ t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable)
     if (pmtBuffer == NULL || pmtTable == NULL)
     {
         printf("ERROR: %s received parameters are not ok\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     if (parsePmtHeader(pmtBuffer, &(pmtTable->pmtHeader)) != NO_ERROR)
     {
         printf("ERROR: %s parsing PMT header.\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     sectionLength = pmtTable->pmtHeader.sectionLength;
@@ -383,7 +385,7 @@ t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable)
         {
             printf("ERROR: %s there is not enough space for Stream info\n",
                 __func__);
-            return ERROR;
+            return PARSER_ERROR;
         }
         
         if (parsePmtServiceInfo(currentBufferPosition, 
@@ -410,17 +412,17 @@ t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable)
         }    
 	}	
     
-    return NO_ERROR;
+    return PARSER_NO_ERROR;
 }
 
-t_Error printPmtTable(pmt_table_t *pmtTable)
+parser_error_t printPmtTable(pmt_table_t *pmtTable)
 {
     uint8_t i = 0;
     
     if (pmtTable == NULL)
     {
         printf("ERROR: %s received parameter is not ok.\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     printf("\n------------ PMT TABLE SECTION ------------------\n");
@@ -440,7 +442,7 @@ t_Error printPmtTable(pmt_table_t *pmtTable)
     }
     printf("\n============= PMT TABLE SECTION =================\n");
     
-    return NO_ERROR;
+    return PARSER_NO_ERROR;
 }
 
 void findLocalOffset(const uint8_t* buffer, uint16_t bufferLength,
@@ -576,7 +578,7 @@ void addOffset(stream_time_t *myTime, uint16_t seconds)
 #endif
 }
 
-t_Error parseTotTable(const uint8_t *totBuffer, stream_time_t *streamTime)
+parser_error_t parseTotTable(const uint8_t *totBuffer, stream_time_t *streamTime)
 {
     uint16_t mjdTime;  
     uint16_t loopLength;
@@ -590,7 +592,7 @@ t_Error parseTotTable(const uint8_t *totBuffer, stream_time_t *streamTime)
     if (tableId != TOT_TABLE_ID)
     {
         printf("ERROR: %s fetched no TOT table.\n", __func__);
-        return ERROR;
+        return PARSER_ERROR;
     }
     
     // Parse day, month and year.
@@ -624,5 +626,5 @@ t_Error parseTotTable(const uint8_t *totBuffer, stream_time_t *streamTime)
     seconds = convertOffsetToSeconds(localTimePolarity, localTimeOffset);
     addOffset(streamTime, seconds);    
     
-    return NO_ERROR;
+    return PARSER_NO_ERROR;
 }

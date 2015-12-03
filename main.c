@@ -3,7 +3,6 @@
 #include "middleware.h"
 #include "graphics.h"
 #include "remote.h"
-#include "globals.h"
 
 #define VOLUME_STEP             10
 
@@ -96,12 +95,15 @@ int main(int argc, char *argv[])
     }
     
     // Initialize. 
+    initGraphic();
     initHardware();  
     registerChannelCallback(channelChanged);
-    initRemote(callbackFunction);
+    initRemote();
+    registerRemoteCallback(callbackFunction);
     
     // Deinitialize.
-    deinitRemote();     
+    deinitRemote();  
+    deinitGraphic();   
     
     return 0;
 }

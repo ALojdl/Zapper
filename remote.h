@@ -16,9 +16,16 @@
 #define EV_VALUE_KEYPRESS   1
 #define EV_VALUE_AUTOREPEAT 2
 
+typedef enum _remote_error_t
+{
+    REMOTE_ERROR = -1,
+    REMOTE_NO_ERROR
+}remote_error_t;
+
 typedef int32_t (*key_callback_t)(uint16_t keyPressed);
 
-t_Error initRemote(key_callback_t keyFunc);
-t_Error deinitRemote();
+remote_error_t initRemote();
+void registerRemoteCallback(key_callback_t keyFunc);
+remote_error_t deinitRemote();
 
 #endif // _REMOTE_H

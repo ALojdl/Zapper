@@ -74,11 +74,21 @@ typedef struct _tot_table_t
     uint16_t sectionLength;
 } tot_table_t;
 
+typedef struct _stream_time_t
+{
+    uint8_t year;
+    uint8_t month;
+    uint8_t day;
+    uint8_t hours;
+    uint8_t minutes;
+    uint8_t seconds;
+} stream_time_t;
+
 void getConfiguration(const char *path, init_data_t *data);
 t_Error parsePatTable(const uint8_t *patSectionBuffer, pat_table_t *patTable);
 t_Error printPatTable(pat_table_t *patTable);
 t_Error parsePmtTable(const uint8_t *pmtBuffer, pmt_table_t *pmtTable);
 t_Error printPmtTable(pmt_table_t *pmtTable);
-t_Error parseTotTable(const uint8_t *totTable, char *date);
+t_Error parseTotTable(const uint8_t *totTable, stream_time_t *streamTime);
 
 #endif // _PARSER_H

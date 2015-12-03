@@ -35,6 +35,7 @@ static uint8_t currentVolume;
 static uint8_t volumeMuted;
 static uint8_t videoStreaming;
 static char dmyTime[12];
+static stream_time_t streamTime;
 static changed_channel_callback_t channelCallback;
 static pthread_cond_t statusCondition = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t statusMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -333,12 +334,14 @@ static int32_t pmtFilterCallback (uint8_t *buffer)
 static int32_t totFilterCallback (uint8_t *buffer)
 {
     // Check if there was error while parsing.
-    if (ERROR == parseTotTable(buffer, dmyTime))
+    if (ERROR == parseTotTable(buffer, &streamTime))
     {
         printf("ERROR: Error while parsing TOT.\n");
         deinitFilter(totFilterCallback);
         return -1;
     }
+    sprintf(dmyTime, "%hu/%hu/%hu", streamTime.month, streamTime.day,
+        streamTime.year + 1900);
     printf("INFO: TOT arrived!\n");
     return 0;
 }
@@ -378,6 +381,9 @@ channel_info_t getChannelInfo()
             channelInfo.audioNumber ++;
         }
     }
+    
+    channelInfo.audioPID = data.audioPID;
+    channelInfo.videoPID = data.videoPID;
     
     return channelInfo;
 }

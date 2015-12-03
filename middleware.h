@@ -8,11 +8,13 @@ typedef int32_t (*changed_channel_callback_t)(uint8_t channel);
 
 typedef struct _channel_info_t
 {
-    char date[11];
     uint8_t channelNumber;
     uint8_t channelIndex;
     uint8_t teletextExist;
-    uint8_t audioNumber;    
+    uint8_t audioNumber;  
+    uint8_t audioPID;
+    uint8_t videoPID;  
+    char date[11];
 } channel_info_t;
 
 void savePath(char *pathToConfigFile);

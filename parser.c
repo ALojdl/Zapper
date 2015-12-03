@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-
+#include <stdlib.h>
+#include <time.h>
 #include "parser.h"
 
 #define MAX_CHARACTERS          20
@@ -442,7 +443,8 @@ t_Error printPmtTable(pmt_table_t *pmtTable)
     return NO_ERROR;
 }
 
-int8_t findLocalOffset(const uint8_t* buffer, uint16_t bufferLength)
+void findLocalOffset(const uint8_t* buffer, uint16_t bufferLength,
+    uint8_t *localTimePolarity, uint16_t *localTimeOffset)
 {
     uint16_t parsedLength = 0;
     uint8_t descriptorTag;
@@ -453,61 +455,44 @@ int8_t findLocalOffset(const uint8_t* buffer, uint16_t bufferLength)
     {
         descriptorTag = buffer[parsedLength];
         descriptorLength = buffer[parsedLength + 1];
+ 
         
         if (descriptorTag == 0x58)
         {
             countryCode[0] = buffer[parsedLength + 2];
             countryCode[1] = buffer[parsedLength + 3];
             countryCode[2] = buffer[parsedLength + 4];
-            printf("NASAO: %c%c%c\n", countryCode[0], countryCode[1], countryCode[2]);
-            fflush(stdout);
+            
+            if (countryCode[0] == 'E' && countryCode[1] == 'S' && 
+                countryCode[2] == 'P')
+            {
+                *localTimePolarity = buffer[parsedLength + 5];
+                *localTimePolarity = *localTimePolarity & 0x01;
+                *localTimeOffset = buffer[parsedLength + 6];
+                *localTimeOffset = *localTimeOffset << 8;
+                *localTimeOffset += buffer[parsedLength + 7];
+
+                return; 
+            }
         }
-        parsedLength += descriptorLength;  
+        parsedLength += descriptorLength + 2;  
     }
-    
-    return 0;
 }
 
-t_Error parseTotTable(const uint8_t *totBuffer, char *date)
+void convertTimeToStreamTime(uint16_t mjdTime, 
+    uint8_t *UTCTime, stream_time_t *myTime)
 {
-    uint8_t tableId = totBuffer[0];
-    uint16_t mjdTime;
     uint16_t tmpYear;
     uint16_t tmpMonth;
-    uint16_t day;
-    uint16_t month;
-    uint16_t year;    
     uint16_t K;
-    uint16_t loopLength;
-    uint16_t parsedLength = 0;
-    int8_t offset;
-   
-    if (tableId != TOT_TABLE_ID)
-    {
-        printf("ERROR: %s fetched no TOT table.\n", __func__);
-        return ERROR;
-    }
     
-    mjdTime = totBuffer[3];
-    mjdTime = mjdTime << 8;
-    mjdTime += totBuffer[4];
-    
-    loopLength = totBuffer[5];
-    loopLength = loopLength & 0x0F;
-    loopLength = loopLength << 8;
-    loopLength += totBuffer[6];
-    
-    offset = findLocalOffset(&totBuffer[7], loopLength);
-    
-    printf("INFO: mjd = %hu\n", mjdTime);
-    printf("INFO: loopLenght = %hu\n", loopLength);
-    printf("INFO: offset = %hu\n", offset);
+    uint8_t hours;
+    uint8_t tmpMinutes;
+    uint8_t tmpSeconds;
     
     tmpYear = (int) ((mjdTime - 15078.2) / 365.25);
     tmpMonth = (int) ((mjdTime - 14956.1 - (int) (tmpYear * 365.25)) 
         / 30.6001);
-    day = mjdTime - 14956 - (int) (tmpYear * 365.25) 
-        - (int) (tmpMonth * 30.6001);
         
     if (tmpMonth == 14 || tmpMonth == 15)
     {
@@ -517,11 +502,127 @@ t_Error parseTotTable(const uint8_t *totBuffer, char *date)
     {
         K = 0;
     }
-    year = 1900 + tmpYear + K;
-    month = tmpMonth - 1 - K * 12;
+    myTime->year = tmpYear + K;
+    myTime->month = tmpMonth - 1 - K * 12;
+    myTime->day = mjdTime - 14956 - (int) (tmpYear * 365.25) 
+        - (int) (tmpMonth * 30.6001);
     
-    sprintf(date, "%hu/%hu/%hu", month, day, year);  
-     
+    myTime->hours = (UTCTime[0] >> 4) * 10 + (UTCTime[0] & 0x0F);
+    myTime->minutes = (UTCTime[1] >> 4) * 10 + (UTCTime[1] & 0x0F);
+    myTime->seconds = (UTCTime[2] >> 4) * 10 + (UTCTime[2] & 0x0F);
+    
+    printf("INFO: Time read from stream: %hu/%hu/%hu %hu:%hu:%hu .\n", 
+        myTime->year, myTime->month, myTime->day, myTime->hours, myTime->minutes, 
+        myTime->seconds);
+}
+
+int16_t convertOffsetToSeconds(uint8_t localTimePolarity, uint16_t localTimeOffset)
+{    
+    uint16_t tmpHours;
+    uint16_t tmpMinutes;
+    int16_t seconds;
+    
+    tmpHours = (localTimeOffset >> 12) * 10 + ((localTimeOffset >> 8) & 0x0F);
+    tmpMinutes = ((localTimeOffset >> 4) & 0x00F) * 10 + (localTimeOffset & 0x000F);
+    
+    if (localTimePolarity)
+    {
+        seconds = -(tmpHours * 3600 + tmpMinutes * 60);
+    }
+    else
+    {
+        seconds = (tmpHours * 3600 + tmpMinutes * 60);
+    }
+
+#ifdef DEBUG_INFO    
+    printf("INFO: Offset in seconds %d.\n", seconds);
+#endif
+    
+    return seconds;
+}
+
+void addOffset(stream_time_t *myTime, uint16_t seconds)
+{
+    struct tm time;
+    struct tm *newTime;
+    time_t  epochTime;    
+    
+    // Copy values
+    time.tm_sec = myTime->seconds;
+    time.tm_min = myTime->minutes;
+    time.tm_hour = myTime->hours;
+    time.tm_mday = myTime->day;
+    time.tm_mon = myTime->month;
+    time.tm_year = myTime->year;
+    time.tm_isdst = 0;
+
+    // Convert to seconds, add offset and convert again.
+    epochTime = mktime(&time);
+    epochTime += seconds;
+    newTime = gmtime(&epochTime);
+    
+    // Copy values
+    myTime->seconds = newTime->tm_sec;
+    myTime->minutes = newTime->tm_min;
+    myTime->hours = newTime->tm_hour;
+    myTime->day = newTime->tm_mday;
+    myTime->month = newTime->tm_mon;
+    myTime->year = newTime->tm_year;   
+
+#ifdef DEBUG_INFO    
+    printf("INFO: Time calculated from stream: %hu/%hu/%hu %hu:%hu:%hu\n",
+        myTime->year, myTime->month, myTime->day, myTime->hours, 
+        myTime->minutes, myTime->seconds);
+#endif
+}
+
+t_Error parseTotTable(const uint8_t *totBuffer, stream_time_t *streamTime)
+{
+    uint16_t mjdTime;  
+    uint16_t loopLength;
+    uint16_t localTimeOffset;
+    uint16_t parsedLength = 0;
+    uint16_t seconds;
+    uint8_t tableId = totBuffer[0];
+    uint8_t localTimePolarity;    
+    uint8_t UTCTime[3];
+   
+    if (tableId != TOT_TABLE_ID)
+    {
+        printf("ERROR: %s fetched no TOT table.\n", __func__);
+        return ERROR;
+    }
+    
+    // Parse day, month and year.
+    mjdTime = totBuffer[3];
+    mjdTime = mjdTime << 8;
+    mjdTime += totBuffer[4];  
+    
+    // Parse UTC time.
+    UTCTime[0] = totBuffer[5]; 
+    UTCTime[1] = totBuffer[6]; 
+    UTCTime[2] = totBuffer[7]; 
+    
+    // Parse length of descriptor part. 
+    loopLength = totBuffer[8];
+    loopLength = loopLength & 0x0F;
+    loopLength = loopLength << 8;
+    loopLength += totBuffer[9];
+    
+    findLocalOffset(&totBuffer[10], loopLength, 
+        &localTimePolarity, &localTimeOffset);
+        
+#ifdef DEBUG_INFO    
+    printf("INFO: -------------------------------------------------------- \n");
+    printf("INFO: mjd = %hu\n", mjdTime);
+    printf("INFO: polarity = %hu\n", localTimePolarity);
+    printf("INFO: offset = %x\n", localTimeOffset);
+    printf("INFO: UTCtime = %x%x%x\n", UTCTime[0], UTCTime[1], UTCTime[2]);
+#endif
+    
+    convertTimeToStreamTime(mjdTime, UTCTime, streamTime);    
+    seconds = convertOffsetToSeconds(localTimePolarity, localTimeOffset);
+    addOffset(streamTime, seconds);    
     
     return NO_ERROR;
 }

@@ -15,6 +15,8 @@ void copyValues(channel_info_t *channelStruct, info_data_t *infoStruct)
 {
     infoStruct->channelNumber = channelStruct->channelNumber;
     infoStruct->teletextExist = channelStruct->teletextExist;
+    infoStruct->audioPID = channelStruct->audioPID;
+    infoStruct->videoPID = channelStruct->videoPID;
     strcpy(infoStruct->date, channelStruct->date);
 }
 

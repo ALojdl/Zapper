@@ -156,13 +156,17 @@ t_Error drawInfoBar(info_data_t data)
 {
     IDirectFBFont *fontInterface;
 	DFBFontDescription fontDesc;
-	char prog[11];
+	char prog[32];
 	char date[32];
-	char telxt[20];
+	char telxt[32];
+	char audio[32];
+	char video[32];
 	
 	// Prepare strings for info bar.
 	sprintf(prog, "Program %hu", data.channelNumber);
 	sprintf(date, "Naziv dana u nedelji %s", data.date);
+	sprintf(audio, "Audio PID %hu", data.audioPID);
+	sprintf(video, "Video PID %hu", data.videoPID);
 	if (data.teletextExist)
     {
         sprintf(telxt, "Teletekst postoji");    
@@ -189,9 +193,13 @@ t_Error drawInfoBar(info_data_t data)
     DFBCHECK(primary->SetColor(primary, TEXT_RED, TEXT_GREEN, TEXT_BLUE, 0xff));
     DFBCHECK(primary->DrawString(primary, prog, -1, screenWidth/5, 
 	    17*screenHeight/20, DSTF_LEFT));
-	DFBCHECK(primary->DrawString(primary, date, -1, screenWidth/5, 
+	DFBCHECK(primary->DrawString(primary, audio, -1, screenWidth/5, 
+	    18*screenHeight/20, DSTF_LEFT));
+	DFBCHECK(primary->DrawString(primary, video, -1, screenWidth/5, 
+	    19*screenHeight/20, DSTF_LEFT));
+	DFBCHECK(primary->DrawString(primary, date, -1, 4*screenWidth/9, 
 	    19*screenHeight/20, DSTF_LEFT));  
-	DFBCHECK(primary->DrawString(primary, telxt, -1, 5*screenWidth/9, 
+	DFBCHECK(primary->DrawString(primary, telxt, -1, 4*screenWidth/9, 
 	    17*screenHeight/20, DSTF_LEFT));
     
     // Switch buffers.

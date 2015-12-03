@@ -8,9 +8,11 @@
 
 typedef struct _info_data_t
 {
-    char date[11];
     uint8_t channelNumber;
-    uint8_t teletextExist;    
+    uint8_t teletextExist;  
+    uint8_t audioPID;
+    uint8_t videoPID;  
+    char date[11];
 } info_data_t;
 
 t_Error initGraphic();
